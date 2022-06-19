@@ -5,6 +5,7 @@ package body Solver.DPLL is
    subtype Variable_Or_Null is Variable'Base range 0 .. Variable'Last;
 
    type Decision_Array is array (Variable range <>) of Natural;
+   type Antecedant_Array is array (Variable range <>) of Clause;
    type Literal_Mask is array (Literal range <>) of Boolean;
 
    type Formula_Access is access Formula;
@@ -49,14 +50,14 @@ package body Solver.DPLL is
    is
       Unassigned_Left    : Natural := Unassigned_Count (M);
       Decision_Level     : Natural := 0;
-      Conflicting_Clause : Natural := 0;
+      Conflicting_Clause : Clause  := null;
       Lit_Decisions      : Decision_Array :=
         (1 .. Variable (Unassigned_Left) => 0);
-      Lit_Antecedants    : Decision_Array :=
-        (1 .. Variable (Unassigned_Left) => 0);
+      Lit_Antecedants    : Antecedant_Array :=
+        (1 .. Variable (Unassigned_Left) => null);
 
       procedure Assign
-        (Var : Variable; Value : Boolean; Antecedant : Natural);
+        (Var : Variable; Value : Boolean; Antecedant : Clause);
 
       procedure Unassign (Var : Variable);
 
@@ -73,7 +74,7 @@ package body Solver.DPLL is
       procedure Decide;
 
       procedure Assign
-        (Var : Variable; Value : Boolean; Antecedant : Natural)
+        (Var : Variable; Value : Boolean; Antecedant : Clause)
       is
       begin
          M (Var) := (if Value then True else False);
@@ -95,14 +96,13 @@ package body Solver.DPLL is
          while Unit_Clause_Found loop
             Unit_Clause_Found := False;
 
-            for C in F.all'Range loop
+            for C of F.all loop
                declare
-                  Dis         : constant Clause := F.all (C);
                   Unset_Count : Natural := 0;
                   Last_Unset  : Literal;
                   Is_Sat      : Boolean := False;
                begin
-                  for L of Dis.all loop
+                  for L of C.all loop
                      case M (abs L) is
                         when True =>
                            if L > 0 then
@@ -156,7 +156,7 @@ package body Solver.DPLL is
             end if;
          end loop;
          Put_Line ("Redecide " & First'Image);
-         Assign (First, (if Value in True then False else True), 0);
+         Assign (First, (if Value in True then False else True), null);
          return True;
       end Backtrack;
 
@@ -164,24 +164,20 @@ package body Solver.DPLL is
          Found             : Natural := 0;
          Pivot             : Variable_Or_Null := 0;
          Learnt_Clause     : Clause :=
-            new Literal_Array'(F (Conflicting_Clause).all);
+            new Literal_Array'(Conflicting_Clause.all);
       begin
          if Decision_Level <= 0 then
             return False;
          end if;
 
          Put_Line ("Backjump");
-         Put_Line ("Conflicting clause :" & Conflicting_Clause'Image);
          while True loop
             Found := 0;
 
             for Lit of Learnt_Clause.all loop
-               Put_Line
-                 ("Antecedant of " & Lit'Image & " is "
-                  & Lit_Antecedants (abs Lit)'Image);
                if Lit_Decisions (abs Lit) = Decision_Level then
                   Found := Found + 1;
-                  if Lit_Antecedants (abs Lit) /= 0 then
+                  if Lit_Antecedants (abs Lit) /= null then
                      Pivot := abs Lit;
                   end if;
                end if;
@@ -195,7 +191,7 @@ package body Solver.DPLL is
                Old_Learnt_Clause : Clause := Learnt_Clause;
             begin
                Learnt_Clause := Resolve
-                 (Learnt_Clause, F (Lit_Antecedants (Pivot)), Pivot);
+                 (Learnt_Clause, Lit_Antecedants (Pivot), Pivot);
                Free (Old_Learnt_Clause);
             end;
          end loop;
@@ -267,7 +263,7 @@ package body Solver.DPLL is
       begin
          Put_Line ("Decide " & Var'Image);
          Decision_Level := Decision_Level + 1;
-         Assign (Var, True, 0);
+         Assign (Var, True, null);
       end Decide;
    begin
       if not Unit_Propagate then
