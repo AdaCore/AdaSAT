@@ -166,6 +166,8 @@ package body Solver.DPLL is
             Free (Updated);
             if OK then
                return True;
+            elsif New_Clause'Length = 0 then
+               return False;
             end if;
             Put_Line ("T-Restart");
             M := Orig_Model;

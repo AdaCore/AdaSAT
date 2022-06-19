@@ -1,0 +1,26 @@
+with "dpll";
+
+project DPLL_Test is
+   type Build_Mode_Type is ("dev", "prod");
+   Build_Mode : Build_Mode_Type :=
+      external ("BUILD_MODE", external ("DPLL_BUILD_MODE", "dev"));
+
+   for Source_Dirs use ("tests");
+   for Main use ("simple.adb");
+   for Exec_Dir use "bin";
+   for Object_Dir use "obj";
+
+   Common_Ada_Cargs := ("-gnatwa", "-gnatyg", "-fPIC");
+
+   package Compiler is
+      case Build_Mode is
+         when "dev" =>
+            for Default_Switches ("Ada") use
+               Common_Ada_Cargs & ("-g", "-O0", "-gnatwe", "-gnata");
+
+         when "prod" =>
+            for Default_Switches ("Ada") use
+               Common_Ada_Cargs & ("-g", "-Ofast");
+      end case;
+   end Compiler;
+end DPLL_Test;
