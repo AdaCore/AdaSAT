@@ -12,13 +12,13 @@ package body Solver is
    end "abs";
 
    function Satisfies (F : Formula; M : Model) return SAT_Result is
-      OK : Literal_Value := False;
+      OK : Variable_Value := False;
    begin
       for Dis of F loop
          for L of Dis.all loop
             declare
-               Model_Value : constant Literal_Value := M (abs L);
-               Required    : constant Literal_Value :=
+               Model_Value : constant Variable_Value := M (abs L);
+               Required    : constant Variable_Value :=
                  (if L < 0 then False else True);
             begin
                if Model_Value in Unset then

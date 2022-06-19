@@ -13,7 +13,7 @@ package body Solver.DPLL is
      (Formula, Formula_Access);
 
    procedure Free is new Ada.Unchecked_Deallocation
-     (Literal_Array, Literal_Options);
+     (Literal_Array, Literal_Array_Access);
 
    function Unassigned_Count (M : Model) return Natural;
 
@@ -62,12 +62,13 @@ package body Solver.DPLL is
 
       function Unit_Propagate return Boolean;
 
-      function Backtrack return Boolean;
+      function Backtrack return Boolean with Unreferenced;
+
       function Backjump return Boolean;
 
       function Resolve
-        (Left, Right : Literal_Options;
-         Pivot       : Variable) return Literal_Options;
+        (Left, Right : Clause;
+         Pivot       : Variable) return Clause;
 
       procedure Decide;
 
@@ -96,7 +97,7 @@ package body Solver.DPLL is
 
             for C in F.all'Range loop
                declare
-                  Dis         : constant Literal_Options := F.all (C);
+                  Dis         : constant Clause := F.all (C);
                   Unset_Count : Natural := 0;
                   Last_Unset  : Literal;
                   Is_Sat      : Boolean := False;
@@ -137,7 +138,7 @@ package body Solver.DPLL is
 
       function Backtrack return Boolean is
          First : Variable := M'Last;
-         Value : Literal_Value;
+         Value : Variable_Value;
       begin
          if Decision_Level <= 0 then
             return False;
@@ -162,7 +163,7 @@ package body Solver.DPLL is
       function Backjump return Boolean is
          Found             : Natural := 0;
          Pivot             : Variable_Or_Null := 0;
-         Learnt_Clause     : Literal_Options :=
+         Learnt_Clause     : Clause :=
             new Literal_Array'(F (Conflicting_Clause).all);
       begin
          if Decision_Level <= 0 then
@@ -191,7 +192,7 @@ package body Solver.DPLL is
             end if;
 
             declare
-               Old_Learnt_Clause : Literal_Options := Learnt_Clause;
+               Old_Learnt_Clause : Clause := Learnt_Clause;
             begin
                Learnt_Clause := Resolve
                  (Learnt_Clause, F (Lit_Antecedants (Pivot)), Pivot);
@@ -238,8 +239,8 @@ package body Solver.DPLL is
       end Backjump;
 
       function Resolve
-        (Left, Right : Literal_Options;
-         Pivot       : Variable) return Literal_Options
+        (Left, Right : Clause;
+         Pivot       : Variable) return Clause
       is
          New_Clause : Literal_Array := Left.all & Right.all;
          Index : Natural := 1;

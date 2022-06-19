@@ -1,21 +1,39 @@
 package Solver is
    type Variable is new Positive;
+
    type Literal is private;
+   --  A positive or negative occurrence of a variable
 
    function "+" (V : Variable) return Literal;
+   --  Create a literal with a positive polarity occurrence of a variable
+
    function "-" (V : Variable) return Literal;
+   --  Create a literal with a negative polarity occurrence of a variable
+
    function "abs" (L : Literal) return Variable;
+   --  Get the variable that occurs in this literal
 
    type Literal_Array is array (Positive range <>) of Literal;
-   type Literal_Options is access Literal_Array;
-   type Formula is array (Positive range <>) of Literal_Options;
+   type Literal_Array_Access is access Literal_Array;
 
-   type Literal_Value is (True, False, Unset);
-   type Model is array (Variable range <>) of Literal_Value;
+   subtype Clause is Literal_Array_Access;
+   --  A clause represents a disjunction of literals
+
+   type Formula is array (Positive range <>) of Clause;
+   --  A CNF formula as a list of clause
+
+   type Variable_Value is (True, False, Unset);
+   --  A variable can either be set to True or False, or Unset
+
+   type Model is array (Variable range <>) of Variable_Value;
+   --  A mapping from variable to its value
 
    type SAT_Result is (SAT, UNSAT, UNKNOWN);
+   --  The result of solving a formula
 
    function Satisfies (F : Formula; M : Model) return SAT_Result;
+   --  Given a formula and a model, evaluates whether the model
+   --  satisfies the formula or not.
 
 private
    type Literal is new Integer;
