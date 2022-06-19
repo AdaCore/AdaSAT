@@ -1,4 +1,3 @@
-with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Deallocation;
 
 package body Solver.DPLL is
@@ -179,7 +178,6 @@ package body Solver.DPLL is
                   elsif Unset_Count = 1 then
                      --  We found a unit clause, choose the right value to
                      --  satisfy it.
-                     Put_Line ("Propagate");
                      Assign (abs Last_Unset, Last_Unset > 0, C);
                      Unit_Clause_Found := True;
                   elsif Unset_Count = 0 then
@@ -206,7 +204,6 @@ package body Solver.DPLL is
             return False;
          end if;
 
-         Put_Line ("Backtrack");
          Decision_Level := Decision_Level - 1;
          for Index in M'Range loop
             if Lit_Decisions (Index) > Decision_Level then
@@ -217,7 +214,6 @@ package body Solver.DPLL is
                Unassign (Index);
             end if;
          end loop;
-         Put_Line ("Redecide " & First'Image);
          Assign (First, (if Value in True then False else True), null);
          return True;
       end Backtrack;
@@ -236,7 +232,6 @@ package body Solver.DPLL is
             return False;
          end if;
 
-         Put_Line ("Backjump");
          while True loop
             Found := 0;
 
@@ -265,13 +260,6 @@ package body Solver.DPLL is
                Free (Old_Learnt_Clause);
             end;
          end loop;
-
-         Put ("Learnt clause : ");
-         for Lit of Learnt_Clause.all loop
-            Put (Lit'Image);
-            Put (" ");
-         end loop;
-         New_Line;
 
          --  Find the decision level to which we should backjump by taking
          --  the maximum decision level among the literals of the learnt
@@ -307,7 +295,6 @@ package body Solver.DPLL is
             Free (Old_Formula);
          end;
 
-         Put_Line ("Backjumping to level :" & Decision_Level'Image);
          return True;
       end Backjump;
 
@@ -346,7 +333,6 @@ package body Solver.DPLL is
       procedure Decide is
          Var : constant Variable := First_Unassigned (M);
       begin
-         Put_Line ("Decide " & Var'Image);
          Decision_Level := Decision_Level + 1;
          Assign (Var, True, null);
       end Decide;
@@ -396,7 +382,6 @@ package body Solver.DPLL is
             elsif New_Clause'Length = 0 then
                return False;
             end if;
-            Put_Line ("T-Restart");
             M := Orig_Model;
             Updated := new Formula'(Old_Formula & New_Clause);
          end;
