@@ -22,12 +22,12 @@ procedure Simple is
    package DPLLT is new DPLL (Empty_Theory);
 
    F : constant Formula :=
-     (new Literal_Array'(-1, 2),
-      new Literal_Array'(-3, 4),
+     (new Literal_Array'(-1, +2),
+      new Literal_Array'(-3, +4),
       new Literal_Array'(-6, -5, -2),
-      new Literal_Array'(-5, 6),
-      new Literal_Array'(5, 7),
-      new Literal_Array'(-1, 5, -7));
+      new Literal_Array'(-5, +6),
+      new Literal_Array'(+5, +7),
+      new Literal_Array'(-1, +5, -7));
    M : Model := (1 .. 7 => Unset);
 begin
    if DPLLT.Solve (F, M) then

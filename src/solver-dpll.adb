@@ -2,8 +2,10 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Unchecked_Deallocation;
 
 package body Solver.DPLL is
-   type Decision_Array is array (Positive range <>) of Natural;
-   type Literal_Mask is array (Integer range <>) of Boolean;
+   subtype Variable_Or_Null is Variable'Base range 0 .. Variable'Last;
+
+   type Decision_Array is array (Variable range <>) of Natural;
+   type Literal_Mask is array (Literal range <>) of Boolean;
 
    type Formula_Access is access Formula;
 
@@ -15,7 +17,7 @@ package body Solver.DPLL is
 
    function Unassigned_Count (M : Model) return Natural;
 
-   function First_Unassigned (M : Model) return Natural;
+   function First_Unassigned (M : Model) return Variable_Or_Null;
 
    function Solve_No_Theory
      (F : in out Formula_Access; M : in out Model) return Boolean;
@@ -32,7 +34,7 @@ package body Solver.DPLL is
       return Count;
    end Unassigned_Count;
 
-   function First_Unassigned (M : Model) return Natural is
+   function First_Unassigned (M : Model) return Variable_Or_Null is
    begin
       for I in M'Range loop
          if M (I) = Unset then
@@ -46,15 +48,17 @@ package body Solver.DPLL is
      (F : in out Formula_Access; M : in out Model) return Boolean
    is
       Unassigned_Left    : Natural := Unassigned_Count (M);
-      Lit_Decisions      : Decision_Array := (1 .. Unassigned_Left => 0);
-      Lit_Antecedants    : Decision_Array := (1 .. Unassigned_Left => 0);
       Decision_Level     : Natural := 0;
       Conflicting_Clause : Natural := 0;
+      Lit_Decisions      : Decision_Array :=
+        (1 .. Variable (Unassigned_Left) => 0);
+      Lit_Antecedants    : Decision_Array :=
+        (1 .. Variable (Unassigned_Left) => 0);
 
       procedure Assign
-        (Lit_Index : Natural; Value : Boolean; Antecedant : Natural);
+        (Var : Variable; Value : Boolean; Antecedant : Natural);
 
-      procedure Unassign (Lit_Index : Natural);
+      procedure Unassign (Var : Variable);
 
       function Unit_Propagate return Boolean;
 
@@ -63,24 +67,24 @@ package body Solver.DPLL is
 
       function Resolve
         (Left, Right : Literal_Options;
-         Pivot_Lit   : Natural) return Literal_Options;
+         Pivot       : Variable) return Literal_Options;
 
       procedure Decide;
 
       procedure Assign
-        (Lit_Index : Natural; Value : Boolean; Antecedant : Natural)
+        (Var : Variable; Value : Boolean; Antecedant : Natural)
       is
       begin
-         M (Lit_Index) := (if Value then True else False);
-         Lit_Decisions (Lit_Index) := Decision_Level;
-         Lit_Antecedants (Lit_Index) := Antecedant;
+         M (Var) := (if Value then True else False);
+         Lit_Decisions (Var) := Decision_Level;
+         Lit_Antecedants (Var) := Antecedant;
          Unassigned_Left := Unassigned_Left - 1;
       end Assign;
 
-      procedure Unassign (Lit_Index : Natural) is
+      procedure Unassign (Var : Variable) is
       begin
-         M (Lit_Index) := Unset;
-         Lit_Decisions (Lit_Index) := 0;
+         M (Var) := Unset;
+         Lit_Decisions (Var) := 0;
          Unassigned_Left := Unassigned_Left + 1;
       end Unassign;
 
@@ -94,7 +98,7 @@ package body Solver.DPLL is
                declare
                   Dis         : constant Literal_Options := F.all (C);
                   Unset_Count : Natural := 0;
-                  Last_Unset  : Integer;
+                  Last_Unset  : Literal;
                   Is_Sat      : Boolean := False;
                begin
                   for L of Dis.all loop
@@ -132,7 +136,7 @@ package body Solver.DPLL is
       end Unit_Propagate;
 
       function Backtrack return Boolean is
-         First : Positive := M'Last;
+         First : Variable := M'Last;
          Value : Literal_Value;
       begin
          if Decision_Level <= 0 then
@@ -157,7 +161,7 @@ package body Solver.DPLL is
 
       function Backjump return Boolean is
          Found             : Natural := 0;
-         Pivot             : Natural := 0;
+         Pivot             : Variable_Or_Null := 0;
          Learnt_Clause     : Literal_Options :=
             new Literal_Array'(F (Conflicting_Clause).all);
       begin
@@ -235,15 +239,15 @@ package body Solver.DPLL is
 
       function Resolve
         (Left, Right : Literal_Options;
-         Pivot_Lit   : Natural) return Literal_Options
+         Pivot       : Variable) return Literal_Options
       is
          New_Clause : Literal_Array := Left.all & Right.all;
          Index : Natural := 1;
          Last  : Natural := New_Clause'Last;
-         Seen  : Literal_Mask (-M'Last .. M'Last) := (others => False);
+         Seen  : Literal_Mask (-M'Last .. +M'Last) := (others => False);
       begin
          while Index <= Last loop
-            if abs New_Clause (Index) = Pivot_Lit then
+            if abs New_Clause (Index) = Pivot then
                New_Clause (Index) := New_Clause (Last);
                Last := Last - 1;
             elsif Seen (New_Clause (Index)) then
@@ -258,11 +262,11 @@ package body Solver.DPLL is
       end Resolve;
 
       procedure Decide is
-         Index : constant Natural := First_Unassigned (M);
+         Var : constant Variable := First_Unassigned (M);
       begin
-         Put_Line ("Decide " & Index'Image);
+         Put_Line ("Decide " & Var'Image);
          Decision_Level := Decision_Level + 1;
-         Assign (Index, True, 0);
+         Assign (Var, True, 0);
       end Decide;
    begin
       if not Unit_Propagate then

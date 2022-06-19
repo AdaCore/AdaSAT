@@ -1,4 +1,16 @@
 package body Solver is
+   function "+" (V : Variable) return Literal is
+     (Literal (V));
+
+   function "-" (V : Variable) return Literal is
+     (-Literal (V));
+
+   function "abs" (L : Literal) return Variable is
+      Res : constant Literal := abs L;
+   begin
+      return Variable (Res);
+   end "abs";
+
    function Satisfies (F : Formula; M : Model) return SAT_Result is
       OK : Literal_Value := False;
    begin
