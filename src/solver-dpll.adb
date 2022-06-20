@@ -169,7 +169,7 @@ package body Solver.DPLL is
         (Left        : in out Literal_Vectors.Vector;
          Right       : Clause;
          Mask        : in out Literal_Mask;
-         Pivot       : Variable);
+         Pivot_Index : Natural);
       --  Implements the resolution rule: Assuming that Left and Right both
       --  contain an occurrence of Pivot, update the Left clause to be the
       --  resolvent, that is the concatenation of the Left and Right clauses
@@ -317,7 +317,9 @@ package body Solver.DPLL is
 
       function Backjump return Boolean is
          Found         : Natural := 0;
+         Lit_Index     : Positive;
          Pivot         : Variable_Or_Null := 0;
+         Pivot_Index   : Natural;
          Learnt_Clause : Literal_Vectors.Vector;
          Mask          : Literal_Mask (-M'Last .. +M'Last) :=
             (others => False);
@@ -328,13 +330,16 @@ package body Solver.DPLL is
 
          Learnt_Clause.Reserve_Capacity (Conflicting_Clause.all'Length);
          for Lit of Conflicting_Clause.all loop
-            Learnt_Clause.Append (Lit);
-            Mask (Lit) := True;
+            if not Mask (Lit) then
+               Learnt_Clause.Append (Lit);
+               Mask (Lit) := True;
+            end if;
          end loop;
 
          while True loop
             Found := 0;
             Pivot := 0;
+            Lit_Index := 1;
 
             --  Find all the variables that were set at this decision level
             --  and choose a pivot among those.
@@ -344,9 +349,11 @@ package body Solver.DPLL is
                   if Pivot = 0 and then
                      Lit_Antecedants (abs Lit) /= null
                   then
-                     Pivot := abs Lit;
+                     Pivot       := abs Lit;
+                     Pivot_Index := Lit_Index;
                   end if;
                end if;
+               Lit_Index := Lit_Index + 1;
             end loop;
 
             if Found = 1 then
@@ -355,7 +362,8 @@ package body Solver.DPLL is
 
             --  Update the learnt clause by resolving it with the antecendant
             --  of the pivot.
-            Resolve (Learnt_Clause, Lit_Antecedants (Pivot), Mask, Pivot);
+            Resolve
+              (Learnt_Clause, Lit_Antecedants (Pivot), Mask, Pivot_Index);
          end loop;
 
          --  Find the decision level to which we should backjump by taking
@@ -408,23 +416,15 @@ package body Solver.DPLL is
         (Left        : in out Literal_Vectors.Vector;
          Right       : Clause;
          Mask        : in out Literal_Mask;
-         Pivot       : Variable)
+         Pivot_Index : Natural)
       is
-         use Ada.Containers;
-
-         Index : Natural := 1;
-         Last  : Natural := Natural (Left.Length);
+         Pivot : constant Variable := abs Left (Pivot_Index);
       begin
-         while Index <= Last loop
-            if abs Left (Index) = Pivot then
-               Left (Index) := Left (Last);
-               Last := Last - 1;
-            else
-               Index := Index + 1;
-            end if;
-         end loop;
+         Left (Pivot_Index) := Left.Last_Element;
+         Left.Delete_Last;
 
-         Left.Set_Length (Count_Type (Last));
+         --  Assume pivot is seen so that the following loop
+         --  never considers adding the pivot back into Left.
          Mask (+Pivot) := True;
          Mask (-Pivot) := True;
 
@@ -435,6 +435,7 @@ package body Solver.DPLL is
             end if;
          end loop;
 
+         --  Now we can mark the pivot as not seen.
          Mask (+Pivot) := False;
          Mask (-Pivot) := False;
       end Resolve;
