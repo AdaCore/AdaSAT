@@ -1,3 +1,5 @@
+with Ada.Strings.Unbounded;
+
 package body Solver is
    ---------
    -- "+" --
@@ -22,6 +24,26 @@ package body Solver is
    begin
       return Variable (Res);
    end "abs";
+
+   -----------
+   -- Image --
+   -----------
+
+   function Image (C : Clause) return String is
+      use Ada.Strings.Unbounded;
+
+      Res : Unbounded_String;
+   begin
+      Append (Res, "(");
+      for I in C.all'Range loop
+         Append (Res, C (I)'Image);
+         if I < C.all'Last then
+            Append (Res, " \/ ");
+         end if;
+      end loop;
+      Append (Res, ")");
+      return To_String (Res);
+   end Image;
 
    ---------------
    -- Satisfies --

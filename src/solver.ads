@@ -22,6 +22,9 @@ package Solver is
    subtype Clause is Literal_Array_Access;
    --  A clause represents a disjunction of literals
 
+   function Image (C : Clause) return String;
+   --  Returns a string representation of the clause
+
    type Formula is array (Positive range <>) of Clause;
    --  A CNF formula as a list of clause
 
