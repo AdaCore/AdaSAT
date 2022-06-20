@@ -281,9 +281,9 @@ package body Solver.DPLL is
 
          --  Unset all the variables that were set at a decision level higher
          --  than the one we are backjumping to.
-         for Lit in Lit_Decisions'Range loop
-            if Lit_Decisions (Lit) > Decision_Level then
-               Unassign (Lit);
+         for Var in Lit_Decisions'Range loop
+            if Lit_Decisions (Var) > Decision_Level then
+               Unassign (Var);
             end if;
          end loop;
 
