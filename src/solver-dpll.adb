@@ -14,11 +14,20 @@ package body Solver.DPLL is
    package Clause_Vectors is new Ada.Containers.Vectors
      (Positive, Clause);
 
+   package Variable_Vectors is new Ada.Containers.Vectors
+     (Positive, Variable_Or_Null);
+
+   type Variable_To_Clause_Map is array (Variable range <>) of
+      aliased Clause_Vectors.Vector;
+
    type Internal_Formula (Var_Count : Variable) is record
-      Clauses : Clause_Vectors.Vector;
+      Clauses     : aliased Clause_Vectors.Vector;
+      Occurs_List : Variable_To_Clause_Map (1 .. Var_Count);
    end record;
    --  An internal formula is the internal representation of a formula,
-   --  which uses a vector so as to be easily expandable.
+   --  which uses a vector for clauses so as to easily append new ones.
+   --  It also maintaints some data structures around the clauses such as
+   --  the occurrence list, to optimize the different routines.
 
    procedure Append_Clause
      (F : in out Internal_Formula; C : Clause);
@@ -50,6 +59,9 @@ package body Solver.DPLL is
    is
    begin
       F.Clauses.Append (C);
+      for Lit of C.all loop
+         F.Occurs_List (abs Lit).Append (C);
+      end loop;
    end Append_Clause;
 
    --------------------
@@ -123,6 +135,10 @@ package body Solver.DPLL is
       --  was unit. If the variable was assigned a value through a decision,
       --  its antecedant is null.
 
+      To_Propagate : Variable_Vectors.Vector;
+      --  The list of variables that need to be propagated during the next
+      --  call to Unit_Propagate.
+
       procedure Assign
         (Var : Variable; Value : Boolean; Antecedant : Clause);
       --  Assigns a value to the given variable, updating the appropriate
@@ -130,6 +146,10 @@ package body Solver.DPLL is
 
       procedure Unassign (Var : Variable);
       --  Unassigns a variable, updating the appropriate data structures
+
+      procedure Add_To_Propagate (V : Variable_Or_Null);
+      --  Include the given variable in the list of variables that must be
+      --  propagated during the next round of Unit_Propagate.
 
       function Unit_Propagate return Boolean;
       --  Implements the BCP routine.
@@ -139,7 +159,7 @@ package body Solver.DPLL is
       --  is kept here to allow experiments.
 
       function Backjump return Boolean;
-      --  Implements non-chronological backtracking through conflict analysis.
+      --  Implements non-chronological backtracking through conflict analysis
 
       function Resolve
         (Left, Right : Clause;
@@ -164,6 +184,7 @@ package body Solver.DPLL is
          Lit_Decisions (Var) := Decision_Level;
          Lit_Antecedants (Var) := Antecedant;
          Unassigned_Left := Unassigned_Left - 1;
+         Add_To_Propagate (Var);
       end Assign;
 
       --------------
@@ -177,17 +198,41 @@ package body Solver.DPLL is
          Unassigned_Left := Unassigned_Left + 1;
       end Unassign;
 
+      ----------------------
+      -- Add_To_Propagate --
+      ----------------------
+
+      procedure Add_To_Propagate (V : Variable_Or_Null) is
+      begin
+         if not To_Propagate.Contains (V) then
+            To_Propagate.Append (V);
+         end if;
+      end Add_To_Propagate;
+
       --------------------
       -- Unit_Propagate --
       --------------------
 
       function Unit_Propagate return Boolean is
-         Unit_Clause_Found : Boolean := True;
-      begin
-         while Unit_Clause_Found loop
-            Unit_Clause_Found := False;
+         use type Ada.Containers.Count_Type;
 
-            for C of F.Clauses loop
+         type Clause_Vector_Access is access all Clause_Vectors.Vector;
+
+         Clauses_Access    : Clause_Vector_Access := null;
+         Being_Propagated  : Variable_Or_Null := 0;
+      begin
+         pragma Assert (To_Propagate.Length = 1);
+         while not To_Propagate.Is_Empty loop
+            Being_Propagated := To_Propagate.Last_Element;
+            To_Propagate.Delete_Last;
+
+            if Being_Propagated = 0 then
+               Clauses_Access := F.Clauses'Access;
+            else
+               Clauses_Access := F.Occurs_List (Being_Propagated)'Access;
+            end if;
+
+            for C of Clauses_Access.all loop
                declare
                   Unset_Count : Natural := 0;
                   Last_Unset  : Literal;
@@ -218,11 +263,11 @@ package body Solver.DPLL is
                      --  We found a unit clause, choose the right value to
                      --  satisfy it.
                      Assign (abs Last_Unset, Last_Unset > 0, C);
-                     Unit_Clause_Found := True;
                   elsif Unset_Count = 0 then
                      --  If all variables were set but the formula is not SAT,
                      --  it is necessarily UNSAT.
                      Conflicting_Clause := C;
+                     To_Propagate.Clear;
                      return False;
                   end if;
                end;
@@ -244,6 +289,7 @@ package body Solver.DPLL is
          end if;
 
          Decision_Level := Decision_Level - 1;
+
          for Index in M'Range loop
             if Lit_Decisions (Index) > Decision_Level then
                if Index < First then
@@ -328,7 +374,7 @@ package body Solver.DPLL is
 
          --  Add the learnt clause to the formula
          Append_Clause (F, Learnt_Clause);
-
+         Add_To_Propagate (0);
          return True;
       end Backjump;
 
@@ -373,6 +419,7 @@ package body Solver.DPLL is
    begin
       --  Perform initial BCP: the formula might be resolvable without
       --  making any decision.
+      Add_To_Propagate (0);
       if not Unit_Propagate then
          return False;
       end if;
