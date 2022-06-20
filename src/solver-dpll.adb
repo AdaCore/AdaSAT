@@ -319,13 +319,16 @@ package body Solver.DPLL is
 
          while True loop
             Found := 0;
+            Pivot := 0;
 
             --  Find all the variables that were set at this decision level
             --  and choose a pivot among those.
             for Lit of Learnt_Clause.all loop
                if Lit_Decisions (abs Lit) = Decision_Level then
                   Found := Found + 1;
-                  if Lit_Antecedants (abs Lit) /= null then
+                  if Pivot = 0 and then
+                     Lit_Antecedants (abs Lit) /= null
+                  then
                      Pivot := abs Lit;
                   end if;
                end if;
