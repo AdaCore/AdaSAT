@@ -4,13 +4,16 @@ package Solver is
    type Literal is private;
    --  A positive or negative occurrence of a variable
 
-   function "+" (V : Variable) return Literal;
+   function "+" (V : Variable) return Literal
+      with Inline;
    --  Create a literal with a positive polarity occurrence of a variable
 
-   function "-" (V : Variable) return Literal;
+   function "-" (V : Variable) return Literal
+      with Inline;
    --  Create a literal with a negative polarity occurrence of a variable
 
-   function "abs" (L : Literal) return Variable;
+   function "abs" (L : Literal) return Variable
+      with Inline;
    --  Get the variable that occurs in this literal
 
    type Literal_Array is array (Positive range <>) of Literal;

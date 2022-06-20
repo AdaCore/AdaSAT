@@ -20,7 +20,7 @@ project DPLL_Test is
 
          when "prod" =>
             for Default_Switches ("Ada") use
-               Common_Ada_Cargs & ("-g", "-Ofast", "-gnatp");
+               Common_Ada_Cargs & ("-g", "-Ofast", "-gnatp", "-gnatn2");
       end case;
    end Compiler;
 end DPLL_Test;
