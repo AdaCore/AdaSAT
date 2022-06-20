@@ -9,13 +9,17 @@ package body Solver.DPLL is
    type Literal_Mask is array (Literal range <>) of Boolean;
 
    procedure Free is new Ada.Unchecked_Deallocation
-     (Literal_Array, Literal_Array_Access);
+     (Literal_Array, Literal_Array_Access)
+      with Unreferenced;
 
    package Clause_Vectors is new Ada.Containers.Vectors
      (Positive, Clause);
 
    package Variable_Vectors is new Ada.Containers.Vectors
      (Positive, Variable_Or_Null);
+
+   package Literal_Vectors is new Ada.Containers.Vectors
+     (Positive, Literal);
 
    type Variable_To_Clause_Map is array (Variable range <>) of
       aliased Clause_Vectors.Vector;
@@ -161,13 +165,17 @@ package body Solver.DPLL is
       function Backjump return Boolean;
       --  Implements non-chronological backtracking through conflict analysis
 
-      function Resolve
-        (Left, Right : Clause;
-         Pivot       : Variable) return Clause;
+      procedure Resolve
+        (Left        : in out Literal_Vectors.Vector;
+         Right       : Clause;
+         Mask        : in out Literal_Mask;
+         Pivot       : Variable);
       --  Implements the resolution rule: Assuming that Left and Right both
-      --  contain an occurrence of Pivot, return a new clause (the resolvent)
-      --  which is the concatenation of the Left and Right clauses without
-      --  occurrences of the pivot.
+      --  contain an occurrence of Pivot, update the Left clause to be the
+      --  resolvent, that is the concatenation of the Left and Right clauses
+      --  without occurrences of the pivot.
+      --  Mask should map literals that appear in the Left clause to True and
+      --  the rest to False.
 
       procedure Decide;
       --  Performs the decision to set a yet unset variable
@@ -310,12 +318,19 @@ package body Solver.DPLL is
       function Backjump return Boolean is
          Found         : Natural := 0;
          Pivot         : Variable_Or_Null := 0;
-         Learnt_Clause : Clause :=
-            new Literal_Array'(Conflicting_Clause.all);
+         Learnt_Clause : Literal_Vectors.Vector;
+         Mask          : Literal_Mask (-M'Last .. +M'Last) :=
+            (others => False);
       begin
          if Decision_Level <= 0 then
             return False;
          end if;
+
+         Learnt_Clause.Reserve_Capacity (Conflicting_Clause.all'Length);
+         for Lit of Conflicting_Clause.all loop
+            Learnt_Clause.Append (Lit);
+            Mask (Lit) := True;
+         end loop;
 
          while True loop
             Found := 0;
@@ -323,7 +338,7 @@ package body Solver.DPLL is
 
             --  Find all the variables that were set at this decision level
             --  and choose a pivot among those.
-            for Lit of Learnt_Clause.all loop
+            for Lit of Learnt_Clause loop
                if Lit_Decisions (abs Lit) = Decision_Level then
                   Found := Found + 1;
                   if Pivot = 0 and then
@@ -340,13 +355,7 @@ package body Solver.DPLL is
 
             --  Update the learnt clause by resolving it with the antecendant
             --  of the pivot.
-            declare
-               Old_Learnt_Clause : Clause := Learnt_Clause;
-            begin
-               Learnt_Clause := Resolve
-                 (Learnt_Clause, Lit_Antecedants (Pivot), Pivot);
-               Free (Old_Learnt_Clause);
-            end;
+            Resolve (Learnt_Clause, Lit_Antecedants (Pivot), Mask, Pivot);
          end loop;
 
          --  Find the decision level to which we should backjump by taking
@@ -355,16 +364,28 @@ package body Solver.DPLL is
          declare
             Backjump_Decision_Level : Natural := 0;
             Lit_Decision_Level      : Natural := 0;
+
+            Literal_Count : constant Natural :=
+               Natural (Learnt_Clause.Length);
+
+            Built_Clause  : constant Clause :=
+               new Literal_Array (1 .. Literal_Count);
          begin
-            for Lit of Learnt_Clause.all loop
-               Lit_Decision_Level := Lit_Decisions (abs Lit);
+            for I in 1 .. Literal_Count loop
+               Built_Clause (I)   := Learnt_Clause (I);
+               Lit_Decision_Level := Lit_Decisions (abs Built_Clause (I));
+
                if Lit_Decision_Level /= Decision_Level and then
                   Lit_Decision_Level > Backjump_Decision_Level
                then
                   Backjump_Decision_Level := Lit_Decision_Level;
                end if;
             end loop;
+
             Decision_Level := Backjump_Decision_Level;
+
+            --  Add the learnt clause to the formula
+            Append_Clause (F, Built_Clause);
          end;
 
          --  Unset all the variables that were set at a decision level higher
@@ -375,8 +396,6 @@ package body Solver.DPLL is
             end if;
          end loop;
 
-         --  Add the learnt clause to the formula
-         Append_Clause (F, Learnt_Clause);
          Add_To_Propagate (0);
          return True;
       end Backjump;
@@ -385,28 +404,39 @@ package body Solver.DPLL is
       -- Resolve --
       -------------
 
-      function Resolve
-        (Left, Right : Clause;
-         Pivot       : Variable) return Clause
+      procedure Resolve
+        (Left        : in out Literal_Vectors.Vector;
+         Right       : Clause;
+         Mask        : in out Literal_Mask;
+         Pivot       : Variable)
       is
-         New_Clause : Literal_Array := Left.all & Right.all;
+         use Ada.Containers;
+
          Index : Natural := 1;
-         Last  : Natural := New_Clause'Last;
-         Seen  : Literal_Mask (-M'Last .. +M'Last) := (others => False);
+         Last  : Natural := Natural (Left.Length);
       begin
          while Index <= Last loop
-            if abs New_Clause (Index) = Pivot then
-               New_Clause (Index) := New_Clause (Last);
-               Last := Last - 1;
-            elsif Seen (New_Clause (Index)) then
-               New_Clause (Index) := New_Clause (Last);
+            if abs Left (Index) = Pivot then
+               Left (Index) := Left (Last);
                Last := Last - 1;
             else
-               Seen (New_Clause (Index)) := True;
                Index := Index + 1;
             end if;
          end loop;
-         return new Literal_Array'(New_Clause (1 .. Last));
+
+         Left.Set_Length (Count_Type (Last));
+         Mask (+Pivot) := True;
+         Mask (-Pivot) := True;
+
+         for Lit of Right.all loop
+            if not Mask (Lit) then
+               Mask (Lit) := True;
+               Left.Append (Lit);
+            end if;
+         end loop;
+
+         Mask (+Pivot) := False;
+         Mask (-Pivot) := False;
       end Resolve;
 
       ------------
