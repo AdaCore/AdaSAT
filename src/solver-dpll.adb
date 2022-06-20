@@ -1,3 +1,4 @@
+with Ada.Containers.Vectors;
 with Ada.Unchecked_Deallocation;
 
 package body Solver.DPLL is
@@ -7,13 +8,27 @@ package body Solver.DPLL is
    type Antecedant_Array is array (Variable range <>) of Clause;
    type Literal_Mask is array (Literal range <>) of Boolean;
 
-   type Formula_Access is access Formula;
-
-   procedure Free is new Ada.Unchecked_Deallocation
-     (Formula, Formula_Access);
-
    procedure Free is new Ada.Unchecked_Deallocation
      (Literal_Array, Literal_Array_Access);
+
+   package Clause_Vectors is new Ada.Containers.Vectors
+     (Positive, Clause);
+
+   type Internal_Formula (Var_Count : Variable) is record
+      Clauses : Clause_Vectors.Vector;
+   end record;
+   --  An internal formula is the internal representation of a formula,
+   --  which uses a vector so as to be easily expandable.
+
+   procedure Append_Clause
+     (F : in out Internal_Formula; C : Clause);
+   --  Append the given clause to the internal formula, updating its
+   --  data structures.
+
+   procedure Append_Formula
+     (F : in out Internal_Formula; Other : Formula);
+   --  Append the given formula to the internal formula, updating its
+   --  data structures.
 
    function Unassigned_Count (M : Model) return Natural;
    --  Return the number of Unset variables in the given model
@@ -22,9 +37,33 @@ package body Solver.DPLL is
    --  Return the first unassigned variable in the given model
 
    function Solve_No_Theory
-     (F : in out Formula_Access; M : in out Model) return Boolean;
+     (F : in out Internal_Formula; M : in out Model) return Boolean;
    --  Solve the given formula using the given mode, without invoking the
    --  theory at all. This is where the DPLL/CDCL algoritm is implemented.
+
+   -------------------
+   -- Append_Clause --
+   -------------------
+
+   procedure Append_Clause
+     (F : in out Internal_Formula; C : Clause)
+   is
+   begin
+      F.Clauses.Append (C);
+   end Append_Clause;
+
+   --------------------
+   -- Append_Formula --
+   --------------------
+
+   procedure Append_Formula
+     (F : in out Internal_Formula; Other : Formula)
+   is
+   begin
+      for C of Other loop
+         Append_Clause (F, C);
+      end loop;
+   end Append_Formula;
 
    ----------------------
    -- Unassigned_Count --
@@ -61,7 +100,7 @@ package body Solver.DPLL is
    ---------------------
 
    function Solve_No_Theory
-     (F : in out Formula_Access; M : in out Model) return Boolean
+     (F : in out Internal_Formula; M : in out Model) return Boolean
    is
       Unassigned_Left    : Natural := Unassigned_Count (M);
       --  Track the number of variables that are not yet set
@@ -148,7 +187,7 @@ package body Solver.DPLL is
          while Unit_Clause_Found loop
             Unit_Clause_Found := False;
 
-            for C of F.all loop
+            for C of F.Clauses loop
                declare
                   Unset_Count : Natural := 0;
                   Last_Unset  : Literal;
@@ -288,12 +327,7 @@ package body Solver.DPLL is
          end loop;
 
          --  Add the learnt clause to the formula
-         declare
-            Old_Formula : Formula_Access := F;
-         begin
-            F := new Formula'(F.all & Learnt_Clause);
-            Free (Old_Formula);
-         end;
+         Append_Clause (F, Learnt_Clause);
 
          return True;
       end Backjump;
@@ -365,28 +399,28 @@ package body Solver.DPLL is
 
    function Solve (F : Formula; M : in out Model) return Boolean is
       Orig_Model : constant Model := M;
-      Updated    : Formula_Access := new Formula'(F);
+      Internal   : Internal_Formula (M'Length);
    begin
+      Internal.Clauses.Reserve_Capacity (F'Length);
+      Append_Formula (Internal, F);
+
       --  Solve the pure SAT problem first. Then, check if the theory accepts
       --  the model found. If not, restart but update the formula with the
       --  theory-provided formula.
-      while Solve_No_Theory (Updated, M) loop
+      while Solve_No_Theory (Internal, M) loop
          declare
-            OK          : Boolean;
-            Old_Formula : constant Formula := Updated.all;
-            New_Clause  : constant Formula := T.Check (Old_Formula, M, OK);
+            OK           : Boolean;
+            New_Formula  : constant Formula := T.Check (F, M, OK);
          begin
-            Free (Updated);
             if OK then
                return True;
-            elsif New_Clause'Length = 0 then
+            elsif New_Formula'Length = 0 then
                return False;
             end if;
             M := Orig_Model;
-            Updated := new Formula'(Old_Formula & New_Clause);
+            Append_Formula (Internal, New_Formula);
          end;
       end loop;
-      Free (Updated);
       return False;
    end Solve;
 end Solver.DPLL;
