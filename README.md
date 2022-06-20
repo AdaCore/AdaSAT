@@ -2,6 +2,7 @@
 Implementation of a DLPP(T) solver in Ada.
 
  - [X] Conflict analysis and backjumping
+ - [X] Occurrence lists
  - [ ] Two-watched literals scheme
  - [ ] Better decision heuristics (VSIDS?)
 
