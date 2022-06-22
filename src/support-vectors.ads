@@ -63,10 +63,12 @@ package Support.Vectors is
    --  Remove every element in this vector.
    --  NOTICE: this function does not actually free the memory of the vector!
 
-   function First_Element (Self : Vector) return Element_Type;
+   function First_Element (Self : Vector) return Element_Type
+     with Inline;
    --  Return the first element in this vector
 
-   function Last_Element (Self : Vector) return Element_Type;
+   function Last_Element (Self : Vector) return Element_Type
+     with Inline;
    --  Return the last element in this vector
 
    function Length (Self : Vector) return Natural
@@ -100,7 +102,7 @@ package Support.Vectors is
    function Next
      (Self : Vector; N : Iteration_Index_Type) return Iteration_Index_Type
    is (N + 1)
-   with Inline;
+     with Inline;
    --  Given a vector and an index, return the next index. Only used for the
    --  iterable aspect.
 
