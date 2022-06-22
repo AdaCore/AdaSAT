@@ -1,8 +1,9 @@
-with Ada.Containers.Vectors;
+with Support.Vectors;
 with Ada.Unchecked_Deallocation;
 
 package body Solver.DPLL is
    subtype Variable_Or_Null is Variable'Base range 0 .. Variable'Last;
+   type Variable_Array is array (Positive range <>) of Variable_Or_Null;
 
    type Decision_Array is array (Variable range <>) of Natural;
    type Antecedant_Array is array (Variable range <>) of Clause;
@@ -12,14 +13,17 @@ package body Solver.DPLL is
      (Literal_Array, Literal_Array_Access)
       with Unreferenced;
 
-   package Clause_Vectors is new Ada.Containers.Vectors
-     (Positive, Clause);
+   package Clause_Vectors is new Support.Vectors
+     (Clause, Formula);
 
-   package Variable_Vectors is new Ada.Containers.Vectors
-     (Positive, Variable_Or_Null);
+   package Variable_Vectors is new Support.Vectors
+     (Variable_Or_Null, Variable_Array);
 
-   package Literal_Vectors is new Ada.Containers.Vectors
-     (Positive, Literal);
+   package Literal_Vectors is new Support.Vectors
+     (Literal, Literal_Array);
+
+   function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
+     (Literal_Array_Access);
 
    type Variable_To_Clause_Map is array (Variable range <>) of
       aliased Clause_Vectors.Vector;
@@ -32,6 +36,10 @@ package body Solver.DPLL is
    --  which uses a vector for clauses so as to easily append new ones.
    --  It also maintaints some data structures around the clauses such as
    --  the occurrence list, to optimize the different routines.
+
+   procedure Destroy (F : in out Internal_Formula);
+   --  Free the memory allocated for the formula's internal structures.
+   --  Does not free the inner clauses.
 
    procedure Append_Clause
      (F : in out Internal_Formula; C : Clause);
@@ -53,6 +61,14 @@ package body Solver.DPLL is
      (F : in out Internal_Formula; M : in out Model) return Boolean;
    --  Solve the given formula using the given mode, without invoking the
    --  theory at all. This is where the DPLL/CDCL algoritm is implemented.
+
+   procedure Destroy (F : in out Internal_Formula) is
+   begin
+      F.Clauses.Destroy;
+      for V of F.Occurs_List loop
+         V.Destroy;
+      end loop;
+   end Destroy;
 
    -------------------
    -- Append_Clause --
@@ -212,9 +228,12 @@ package body Solver.DPLL is
 
       procedure Add_To_Propagate (V : Variable_Or_Null) is
       begin
-         if not To_Propagate.Contains (V) then
-            To_Propagate.Append (V);
-         end if;
+         for E of To_Propagate loop
+            if E = V then
+               return;
+            end if;
+         end loop;
+         To_Propagate.Append (V);
       end Add_To_Propagate;
 
       --------------------
@@ -222,8 +241,6 @@ package body Solver.DPLL is
       --------------------
 
       function Unit_Propagate return Boolean is
-         use type Ada.Containers.Count_Type;
-
          type Clause_Vector_Access is access all Clause_Vectors.Vector;
 
          Clauses_Access    : Clause_Vector_Access := null;
@@ -231,8 +248,7 @@ package body Solver.DPLL is
       begin
          pragma Assert (To_Propagate.Length = 1);
          while not To_Propagate.Is_Empty loop
-            Being_Propagated := To_Propagate.Last_Element;
-            To_Propagate.Delete_Last;
+            Being_Propagated := To_Propagate.Pop;
 
             if Being_Propagated = 0 then
                Clauses_Access := F.Clauses'Access;
@@ -328,7 +344,7 @@ package body Solver.DPLL is
             return False;
          end if;
 
-         Learnt_Clause.Reserve_Capacity (Conflicting_Clause.all'Length);
+         Learnt_Clause.Reserve (Conflicting_Clause.all'Length);
          for Lit of Conflicting_Clause.all loop
             if not Mask (Lit) then
                Learnt_Clause.Append (Lit);
@@ -373,15 +389,10 @@ package body Solver.DPLL is
             Backjump_Decision_Level : Natural := 0;
             Lit_Decision_Level      : Natural := 0;
 
-            Literal_Count : constant Natural :=
-               Natural (Learnt_Clause.Length);
-
-            Built_Clause  : constant Clause :=
-               new Literal_Array (1 .. Literal_Count);
+            Literal_Count : constant Natural := Learnt_Clause.Length;
          begin
             for I in 1 .. Literal_Count loop
-               Built_Clause (I)   := Learnt_Clause (I);
-               Lit_Decision_Level := Lit_Decisions (abs Built_Clause (I));
+               Lit_Decision_Level := Lit_Decisions (abs Learnt_Clause.Get (I));
 
                if Lit_Decision_Level /= Decision_Level and then
                   Lit_Decision_Level > Backjump_Decision_Level
@@ -391,9 +402,6 @@ package body Solver.DPLL is
             end loop;
 
             Decision_Level := Backjump_Decision_Level;
-
-            --  Add the learnt clause to the formula
-            Append_Clause (F, Built_Clause);
          end;
 
          --  Unset all the variables that were set at a decision level higher
@@ -403,6 +411,9 @@ package body Solver.DPLL is
                Unassign (Var);
             end if;
          end loop;
+
+         --  Add the learnt clause to the formula
+         Append_Clause (F, Get_Literal_Vector_Array (Learnt_Clause));
 
          Add_To_Propagate (0);
          return True;
@@ -418,10 +429,9 @@ package body Solver.DPLL is
          Mask        : in out Literal_Mask;
          Pivot_Index : Natural)
       is
-         Pivot : constant Variable := abs Left (Pivot_Index);
+         Pivot : constant Variable := abs Left.Get (Pivot_Index);
       begin
-         Left (Pivot_Index) := Left.Last_Element;
-         Left.Delete_Last;
+         Left.Swap_And_Remove (Pivot_Index);
 
          --  Assume pivot is seen so that the following loop
          --  never considers adding the pivot back into Left.
@@ -481,8 +491,18 @@ package body Solver.DPLL is
    function Solve (F : Formula; M : in out Model) return Boolean is
       Orig_Model : constant Model := M;
       Internal   : Internal_Formula (M'Length);
+
+      function Cleanup (Result : Boolean) return Boolean;
+      --  Return the given value, but first cleanup the data structures
+      --  allocated during this subprogram's run-time.
+
+      function Cleanup (Result : Boolean) return Boolean is
+      begin
+         Destroy (Internal);
+         return Result;
+      end Cleanup;
    begin
-      Internal.Clauses.Reserve_Capacity (F'Length);
+      Internal.Clauses.Reserve (F'Length);
       Append_Formula (Internal, F);
 
       --  Solve the pure SAT problem first. Then, check if the theory accepts
@@ -494,14 +514,15 @@ package body Solver.DPLL is
             New_Formula  : constant Formula := T.Check (F, M, OK);
          begin
             if OK then
-               return True;
+               return Cleanup (True);
             elsif New_Formula'Length = 0 then
-               return False;
+               return Cleanup (False);
             end if;
             M := Orig_Model;
             Append_Formula (Internal, New_Formula);
          end;
       end loop;
-      return False;
+      Destroy (Internal);
+      return Cleanup (False);
    end Solve;
 end Solver.DPLL;
