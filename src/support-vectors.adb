@@ -2,10 +2,6 @@ with System;                  use System;
 with System.Memory;           use System.Memory;
 with System.Storage_Elements; use System.Storage_Elements;
 
------------------
--- AGC.Vectors --
------------------
-
 package body Support.Vectors is
    type Array_Bounds is record
       First : Natural;
