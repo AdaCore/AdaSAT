@@ -415,7 +415,7 @@ package body Solver.DPLL is
          --  Add the learnt clause to the formula
          Append_Clause (F, Get_Literal_Vector_Array (Learnt_Clause));
 
-         Add_To_Propagate (0);
+         Add_To_Propagate (Pivot);
          return True;
       end Backjump;
 
