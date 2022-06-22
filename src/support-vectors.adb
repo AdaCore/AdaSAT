@@ -94,9 +94,8 @@ package body Support.Vectors is
    -------------
 
    procedure Destroy (Self : in out Vector) is
-      R : Elements_Array_Access := To_Pointer (Self.E.all'Address - Offset);
    begin
-      Free (R);
+      Free (Self.E.all'Address - Offset);
    end Destroy;
 
    -----------

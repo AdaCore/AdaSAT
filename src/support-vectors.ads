@@ -1,5 +1,4 @@
 with Ada.Unchecked_Conversion;
-with Ada.Unchecked_Deallocation;
 
 with System;
 
@@ -139,9 +138,6 @@ private
 
    function To_Pointer is
      new Ada.Unchecked_Conversion (System.Address, Elements_Array_Access);
-
-   procedure Free is new Ada.Unchecked_Deallocation
-     (Internal_Elements_Array, Elements_Array_Access);
 
    type Vector is tagged record
       E        : Elements_Array_Access := null;
