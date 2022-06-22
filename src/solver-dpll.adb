@@ -522,7 +522,6 @@ package body Solver.DPLL is
             Append_Formula (Internal, New_Formula);
          end;
       end loop;
-      Destroy (Internal);
       return Cleanup (False);
    end Solve;
 end Solver.DPLL;
