@@ -28,50 +28,86 @@ package body Solver.Propositions is
 
    function Get_Array is new Clause_Vectors.Internal_Array (Formula_Access);
 
-   function To_CNF (P : Proposition) return Formula is
+   function To_CNF
+     (P         : Proposition;
+      Var_Count : in out Variable;
+      Technique : CNF_Technique := Naive) return Formula
+   is
       subtype Any is Literal_Array;
+
+      function Fresh_Var return Variable;
+      function Transform (P : Proposition) return Formula;
+      function Transform_Or_Naive  (P : Proposition) return Formula;
+      function Transform_Or_Quadra (P : Proposition) return Formula;
+
+      function Fresh_Var return Variable is
+      begin
+         Var_Count := Var_Count + 1;
+         return Var_Count;
+      end Fresh_Var;
+
+      function Transform_Or_Naive (P : Proposition) return Formula is
+         L : constant Formula := Transform (P.Left);
+         R : constant Formula := Transform (P.Right);
+         F : Clause_Vectors.Vector;
+      begin
+         for I of L loop
+            for J of R loop
+               F.Append (new Any'(I.all & J.all));
+            end loop;
+         end loop;
+         return E : constant Formula := Get_Array (F).all do
+            F.Destroy;
+         end return;
+      end Transform_Or_Naive;
+
+      function Transform_Or_Quadra (P : Proposition) return Formula is
+         Z : constant Proposition := +Fresh_Var;
+         L : constant Formula := Transform_Or_Naive
+           (not Z or P.Left);
+         R : constant Formula := Transform_Or_Naive
+           (Z or P.Right);
+      begin
+         return L & R;
+      end Transform_Or_Quadra;
+
+      function Transform (P : Proposition) return Formula is
+      begin
+         case P.Kind is
+            when Kind_Var =>
+               return (1 => new Any'(1 => +P.Var));
+            when Kind_Not =>
+               declare
+                  Q : constant Proposition := P.Inner;
+               begin
+                  case Q.Kind is
+                     when Kind_Var =>
+                        return (1 => new Any'(1 => -Q.Var));
+                     when Kind_Not =>
+                        return Transform (Q.Inner);
+                     when Kind_And =>
+                        return Transform (not Q.Left or not Q.Right);
+                     when Kind_Or =>
+                        return Transform (not Q.Left and not Q.Right);
+                     when Kind_Xor =>
+                        raise Program_Error;
+                  end case;
+               end;
+            when Kind_And =>
+               return Transform (P.Left) & Transform (P.Right);
+            when Kind_Or =>
+               if Technique in Naive then
+                  return Transform_Or_Naive (P);
+               else
+                  return Transform_Or_Quadra (P);
+               end if;
+            when Kind_Xor =>
+               return Transform
+                 ((P.Left and not P.Right) or (not P.Left and P.Right));
+         end case;
+      end Transform;
    begin
-      case P.Kind is
-         when Kind_Var =>
-            return (1 => new Any'(1 => +P.Var));
-         when Kind_Not =>
-            declare
-               Q : constant Proposition := P.Inner;
-            begin
-               case Q.Kind is
-                  when Kind_Var =>
-                     return (1 => new Any'(1 => -Q.Var));
-                  when Kind_Not =>
-                     return To_CNF (Q.Inner);
-                  when Kind_And =>
-                     return To_CNF (not Q.Left or not Q.Right);
-                  when Kind_Or =>
-                     return To_CNF (not Q.Left and not Q.Right);
-                  when Kind_Xor =>
-                     raise Program_Error;
-               end case;
-            end;
-         when Kind_And =>
-            return To_CNF (P.Left) & To_CNF (P.Right);
-         when Kind_Or =>
-            declare
-               L : constant Formula := To_CNF (P.Left);
-               R : constant Formula := To_CNF (P.Right);
-               F : Clause_Vectors.Vector;
-            begin
-               for I of L loop
-                  for J of R loop
-                     F.Append (new Any'(I.all & J.all));
-                  end loop;
-               end loop;
-               return E : constant Formula := Get_Array (F).all do
-                  F.Destroy;
-               end return;
-            end;
-         when Kind_Xor =>
-            return To_CNF
-              ((P.Left and not P.Right) or (not P.Left and P.Right));
-      end case;
+      return Transform (P);
    end To_CNF;
 
    function Image (P : Proposition) return String is

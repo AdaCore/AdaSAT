@@ -7,7 +7,21 @@ package Solver.Propositions is
    function "or"  (L, R : Proposition) return Proposition;
    function "xor" (L, R : Proposition) return Proposition;
 
-   function To_CNF (P : Proposition) return Formula;
+   type CNF_Technique is (Naive, Quadra, Tseitin);
+
+   function To_CNF
+     (P         : Proposition;
+      Var_Count : in out Variable;
+      Technique : CNF_Technique := Naive) return Formula;
+   --  Transform the given proposition in an equisat CNF formula.
+   --  Var_Count should denote the number of variables appearing inside P.
+   --  It will be updated if the transformation needs to add new variables.
+   --  Method indicates which method should be used to perform the
+   --  transformation.
+   --  Note:
+   --   - Naive never introduces new variables.
+   --   - Quadra may introduce new variables on disjunctions
+   --   - Tseitin introduces a new variable for each sub-formula
 
    function Image (P : Proposition) return String;
    procedure Destroy (P : in out Proposition);

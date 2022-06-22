@@ -23,12 +23,14 @@ procedure Propositions is
    package Empty_Theory is new Theory (Check);
    package DPLLT is new DPLL (Empty_Theory);
 
-   P : Proposition := (+1 and +2) xor (+1 and +1);
-   F : constant Formula := To_CNF (P);
-   M : Model := [1 .. 2 => Unset];
+   P : Proposition := (+1 and +2) xor (+1 and +3);
+   V : Variable := 3;
+   F : constant Formula := To_CNF (P, V, Quadra);
+   M : Model := [1 .. V => Unset];
 begin
    Put_Line (Image (P));
    Destroy (P);
+   Put_Line (Image (F));
    if DPLLT.Solve (F, M) then
       Put_Line ("Solved");
    else
