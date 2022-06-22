@@ -91,7 +91,9 @@ package body Support.Vectors is
 
    procedure Destroy (Self : in out Vector) is
    begin
-      Free (Self.E.all'Address - Offset);
+      if Self.E /= null then
+         Free (Self.E.all'Address - Offset);
+      end if;
    end Destroy;
 
    -----------
