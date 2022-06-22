@@ -28,6 +28,9 @@ package Solver is
    type Formula is array (Positive range <>) of Clause;
    --  A CNF formula as a list of clause
 
+   function Image (F : Formula) return String;
+   --  Returns a string representation of the formula
+
    type Variable_Value is (True, False, Unset);
    --  A variable can either be set to True or False, or Unset
 

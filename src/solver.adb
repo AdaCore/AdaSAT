@@ -36,12 +36,38 @@ package body Solver is
    begin
       Append (Res, "(");
       for I in C.all'Range loop
-         Append (Res, C (I)'Image);
-         if I < C.all'Last then
-            Append (Res, " \/ ");
-         end if;
+         declare
+            Raw : String := C (I)'Image;
+            Suf : String := Raw (Raw'First + 1 .. Raw'Last);
+         begin
+            if C (I) < 0 then
+               Append (Res, "¬");
+            end if;
+            Append (Res, Suf);
+            if I < C.all'Last then
+               Append (Res, " | ");
+            end if;
+         end;
       end loop;
       Append (Res, ")");
+      return To_String (Res);
+   end Image;
+
+   -----------
+   -- Image --
+   -----------
+
+   function Image (F : Formula) return String is
+      use Ada.Strings.Unbounded;
+
+      Res : Unbounded_String;
+   begin
+      for I in F'Range loop
+         Append (Res, Image (F (I)));
+         if I < F'Last then
+            Append (Res, " & ");
+         end if;
+      end loop;
       return To_String (Res);
    end Image;
 
