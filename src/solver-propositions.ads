@@ -1,6 +1,8 @@
 package Solver.Propositions is
    type Proposition is private;
 
+   Empty_Proposition : constant Proposition;
+
    function "+"   (V    : Variable)    return Proposition;
    function "not" (P    : Proposition) return Proposition;
    function "and" (L, R : Proposition) return Proposition;
@@ -43,4 +45,6 @@ private
             Left, Right : Proposition;
       end case;
    end record;
+
+   Empty_Proposition : constant Proposition := null;
 end Solver.Propositions;
