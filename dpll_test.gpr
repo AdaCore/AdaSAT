@@ -6,7 +6,7 @@ project DPLL_Test is
       external ("BUILD_MODE", external ("DPLL_BUILD_MODE", "dev"));
 
    for Source_Dirs use ("tests");
-   for Main use ("simple.adb", "sudoku.adb");
+   for Main use ("simple.adb", "sudoku.adb", "propositions.adb");
    for Exec_Dir use "bin";
    for Object_Dir use "obj";
 
