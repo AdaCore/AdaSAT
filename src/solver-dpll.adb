@@ -259,7 +259,7 @@ package body Solver.DPLL is
             for C of Clauses_Access.all loop
                declare
                   Unset_Count : Natural := 0;
-                  Last_Unset  : Literal;
+                  Last_Unset  : Literal := 0;
                   Is_Sat      : Boolean := False;
                begin
                   for L of C.all loop
@@ -275,8 +275,10 @@ package body Solver.DPLL is
                               exit;
                            end if;
                         when Unset =>
-                           Unset_Count := Unset_Count + 1;
-                           Last_Unset := L;
+                           if L /= Last_Unset then
+                              Unset_Count := Unset_Count + 1;
+                              Last_Unset := L;
+                           end if;
                      end case;
                   end loop;
 

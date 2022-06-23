@@ -37,8 +37,8 @@ package body Solver is
       Append (Res, "(");
       for I in C.all'Range loop
          declare
-            Raw : String := C (I)'Image;
-            Suf : String := Raw (Raw'First + 1 .. Raw'Last);
+            Raw : constant String := C (I)'Image;
+            Suf : constant String := Raw (Raw'First + 1 .. Raw'Last);
          begin
             if C (I) < 0 then
                Append (Res, "¬");
