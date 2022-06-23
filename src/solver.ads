@@ -1,6 +1,8 @@
 package Solver is
    type Variable is new Positive;
 
+   subtype Variable_Or_Null is Variable'Base range 0 .. Variable'Last;
+
    type Literal is private;
    --  A positive or negative occurrence of a variable
 

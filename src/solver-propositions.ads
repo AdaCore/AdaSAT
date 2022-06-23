@@ -13,7 +13,7 @@ package Solver.Propositions is
 
    function To_CNF
      (P         : Proposition;
-      Var_Count : in out Variable;
+      Var_Count : in out Variable_Or_Null;
       Technique : CNF_Technique := Naive) return Formula;
    --  Transform the given proposition in an equisat CNF formula.
    --  Var_Count should denote the number of variables appearing inside P.

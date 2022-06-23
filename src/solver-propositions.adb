@@ -30,7 +30,7 @@ package body Solver.Propositions is
 
    function To_CNF
      (P         : Proposition;
-      Var_Count : in out Variable;
+      Var_Count : in out Variable_Or_Null;
       Technique : CNF_Technique := Naive) return Formula
    is
       subtype Any is Literal_Array;
@@ -107,7 +107,11 @@ package body Solver.Propositions is
          end case;
       end Transform;
    begin
-      return Transform (P);
+      if P = null then
+         return (1 .. 0 => <>);
+      else
+         return Transform (P);
+      end if;
    end To_CNF;
 
    function Image (P : Proposition) return String is
@@ -147,6 +151,9 @@ package body Solver.Propositions is
 
    procedure Destroy (P : in out Proposition) is
    begin
+      if P = null then
+         return;
+      end if;
       case P.Kind is
          when Kind_Var =>
             null;

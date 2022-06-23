@@ -2,11 +2,10 @@ with Support.Vectors;
 with Ada.Unchecked_Deallocation;
 
 package body Solver.DPLL is
-   subtype Variable_Or_Null is Variable'Base range 0 .. Variable'Last;
    type Variable_Array is array (Positive range <>) of Variable_Or_Null;
 
-   type Decision_Array is array (Variable range <>) of Natural;
-   type Antecedant_Array is array (Variable range <>) of Clause;
+   type Decision_Array is array (Variable_Or_Null range <>) of Natural;
+   type Antecedant_Array is array (Variable_Or_Null range <>) of Clause;
    type Literal_Mask is array (Literal range <>) of Boolean;
 
    procedure Free is new Ada.Unchecked_Deallocation
@@ -28,7 +27,7 @@ package body Solver.DPLL is
    type Variable_To_Clause_Map is array (Variable range <>) of
       aliased Clause_Vectors.Vector;
 
-   type Internal_Formula (Var_Count : Variable) is record
+   type Internal_Formula (Var_Count : Variable_Or_Null) is record
       Clauses     : aliased Clause_Vectors.Vector;
       Occurs_List : Variable_To_Clause_Map (1 .. Var_Count);
    end record;
@@ -144,12 +143,12 @@ package body Solver.DPLL is
       --  The clause that triggered the conflict
 
       Lit_Decisions      : Decision_Array :=
-        (1 .. Variable (Unassigned_Left) => 0);
+        (1 .. Variable_Or_Null (Unassigned_Left) => 0);
       --  Maps each variable to the decision level in which a value was
       --  set for it.
 
       Lit_Antecedants    : Antecedant_Array :=
-        (1 .. Variable (Unassigned_Left) => null);
+        (1 .. Variable_Or_Null (Unassigned_Left) => null);
       --  Maps each variable to its antecedant clause: if the variable was
       --  assigned a value through unit propagation, this is the clause that
       --  was unit. If the variable was assigned a value through a decision,
