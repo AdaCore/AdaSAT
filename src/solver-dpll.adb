@@ -119,7 +119,7 @@ package body Solver.DPLL is
    function First_Unassigned (M : Model) return Variable_Or_Null is
    begin
       for I in M'Range loop
-         if M (I) = Unset then
+         if M (I) in Unset then
             return I;
          end if;
       end loop;
