@@ -53,8 +53,10 @@ package body Solver.DPLL is
    function Unassigned_Count (M : Model) return Natural;
    --  Return the number of Unset variables in the given model
 
-   function First_Unassigned (M : Model) return Variable_Or_Null;
+   function First_Unassigned
+     (M : Model; From : Variable) return Variable_Or_Null;
    --  Return the first unassigned variable in the given model
+   --  Start looking after `From`.
 
    function Solve_Internal
      (F : in out Internal_Formula; M : in out Model) return Boolean;
@@ -116,9 +118,11 @@ package body Solver.DPLL is
    -- First_Unassigned --
    ----------------------
 
-   function First_Unassigned (M : Model) return Variable_Or_Null is
+   function First_Unassigned
+     (M : Model; From : Variable) return Variable_Or_Null
+   is
    begin
-      for I in M'Range loop
+      for I in From .. M'Last loop
          if M (I) in Unset then
             return I;
          end if;
@@ -135,6 +139,9 @@ package body Solver.DPLL is
    is
       Unassigned_Left    : Natural := Unassigned_Count (M);
       --  Track the number of variables that are not yet set
+
+      First_Unset        : Variable := M'First;
+      --  Track the closest variable which can be decided next
 
       Decision_Level     : Natural := 0;
       --  The current decision level
@@ -165,6 +172,10 @@ package body Solver.DPLL is
 
       procedure Unassign (Var : Variable);
       --  Unassigns a variable, updating the appropriate data structures
+
+      procedure Unassign_All (Level : Natural);
+      --  Unassigns all variables that have a decision level higher than
+      --  the given level.
 
       procedure Add_To_Propagate (V : Variable_Or_Null);
       --  Include the given variable in the list of variables that must be
@@ -220,6 +231,24 @@ package body Solver.DPLL is
          Lit_Decisions (Var) := 0;
          Unassigned_Left := Unassigned_Left + 1;
       end Unassign;
+
+      ------------------
+      -- Unassign_All --
+      ------------------
+
+      procedure Unassign_All (Level : Natural) is
+         Found_First : Boolean := False;
+      begin
+         for Var in Lit_Decisions'Range loop
+            if Lit_Decisions (Var) > Level then
+               Unassign (Var);
+               if not Found_First then
+                  Found_First := True;
+                  First_Unset := Var;
+               end if;
+            end if;
+         end loop;
+      end Unassign_All;
 
       ----------------------
       -- Add_To_Propagate --
@@ -325,6 +354,7 @@ package body Solver.DPLL is
             end if;
          end loop;
          Assign (First, (if Value in True then False else True), null);
+         First_Unset := First + 1;
          return True;
       end Backtrack;
 
@@ -407,11 +437,7 @@ package body Solver.DPLL is
 
          --  Unset all the variables that were set at a decision level higher
          --  than the one we are backjumping to.
-         for Var in Lit_Decisions'Range loop
-            if Lit_Decisions (Var) > Decision_Level then
-               Unassign (Var);
-            end if;
-         end loop;
+         Unassign_All (Decision_Level);
 
          --  Add the learnt clause to the formula
          Append_Clause (F, Get_Literal_Vector_Array (Learnt_Clause));
@@ -456,11 +482,13 @@ package body Solver.DPLL is
       ------------
 
       procedure Decide is
-         Var : constant Variable := First_Unassigned (M);
+         Var : constant Variable := First_Unassigned (M, First_Unset);
       begin
+         First_Unset := Var + 1;
          Decision_Level := Decision_Level + 1;
          Assign (Var, True, null);
       end Decide;
+
    begin
       --  Perform initial BCP: the formula might be resolvable without
       --  making any decision.
@@ -516,11 +544,7 @@ package body Solver.DPLL is
                Decision_Level := Backjump_Decision_Level;
             end;
 
-            for Var in Lit_Decisions'Range loop
-               if Lit_Decisions (Var) > Decision_Level then
-                  Unassign (Var);
-               end if;
-            end loop;
+            Unassign_All (Decision_Level);
 
             Append_Formula (F, Explanation);
 
