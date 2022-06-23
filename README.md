@@ -11,8 +11,7 @@ Implementation of a DLPP(T) solver in Ada.
 The solver can solve arbitrary theories via a lazy approach. For that, the DPLL solver can be instantiated with a custom `Theory` package
 that has a very simple interface consisting in a single `Check` function:
 ```
-with function Check
-  (F : Formula; M : Model; SAT : out Boolean) return Formula;
+with function Check (M : Model; SAT : out Boolean) return Formula;
 ```
 This function is invoked whenever the solver needs the theory to validate a model that satisfies the SAT formula.
 In case the model does not satisfy the theory, the function must return a new formula which contradicts the model.

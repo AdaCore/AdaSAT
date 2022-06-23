@@ -8,13 +8,10 @@ procedure Propositions is
    use Solver;
    use Solver.Propositions;
 
-   function Check
-     (F : Formula; M : Model; SAT : out Boolean) return Formula;
+   function Check (M : Model; SAT : out Boolean) return Formula;
 
-   function Check
-     (F : Formula; M : Model; SAT : out Boolean) return Formula
-   is
-      pragma Unreferenced (F, M);
+   function Check (M : Model; SAT : out Boolean) return Formula is
+      pragma Unreferenced (M);
    begin
       SAT := True;
       return [];

@@ -56,10 +56,10 @@ package body Solver.DPLL is
    function First_Unassigned (M : Model) return Variable_Or_Null;
    --  Return the first unassigned variable in the given model
 
-   function Solve_No_Theory
+   function Solve_Internal
      (F : in out Internal_Formula; M : in out Model) return Boolean;
-   --  Solve the given formula using the given mode, without invoking the
-   --  theory at all. This is where the DPLL/CDCL algoritm is implemented.
+   --  Solve the given formula with the given partial model.
+   --  This is where the DPLL/CDCL algorithm is implemented.
 
    procedure Destroy (F : in out Internal_Formula) is
    begin
@@ -126,11 +126,11 @@ package body Solver.DPLL is
       return 0;
    end First_Unassigned;
 
-   ---------------------
-   -- Solve_No_Theory --
-   ---------------------
+   --------------------
+   -- Solve_Internal --
+   --------------------
 
-   function Solve_No_Theory
+   function Solve_Internal
      (F : in out Internal_Formula; M : in out Model) return Boolean
    is
       Unassigned_Left    : Natural := Unassigned_Count (M);
@@ -469,60 +469,86 @@ package body Solver.DPLL is
          return False;
       end if;
 
-      --  While there are still variables that have not been set,
-      --  make a decision and propagate as much as possible, or backjump if
-      --  necessary.
-      while Unassigned_Left > 0 loop
-         Decide;
-         while True loop
-            if Unit_Propagate then
-               exit;
-            elsif not Backjump then
+      while True loop
+         --  While there are still variables that have not been set,
+         --  make a decision and propagate as much as possible, or backjump if
+         --  necessary.
+         while Unassigned_Left > 0 loop
+            Decide;
+            while True loop
+               if Unit_Propagate then
+                  exit;
+               elsif not Backjump then
+                  return False;
+               end if;
+            end loop;
+         end loop;
+
+         --  The pure SAT problem was solved. Now, check if the theory accepts
+         --  the model found. If not, restart but update the formula with the
+         --  theory-provided reason for conflict.
+         declare
+            OK          : Boolean;
+            Explanation : constant Formula := T.Check (M, OK);
+         begin
+            if OK then
+               return True;
+            elsif Explanation'Length = 0 then
                return False;
             end if;
-         end loop;
+
+            declare
+               Backjump_Decision_Level : Natural := 0;
+               Lit_Decision_Level      : Natural := 0;
+            begin
+               for C of Explanation loop
+                  for I in 1 .. C.all'Length loop
+                     Lit_Decision_Level := Lit_Decisions (abs C (I));
+
+                     if Lit_Decision_Level /= Decision_Level and then
+                        Lit_Decision_Level > Backjump_Decision_Level
+                     then
+                        Backjump_Decision_Level := Lit_Decision_Level;
+                     end if;
+                  end loop;
+               end loop;
+
+               Decision_Level := Backjump_Decision_Level;
+            end;
+
+            for Var in Lit_Decisions'Range loop
+               if Lit_Decisions (Var) > Decision_Level then
+                  Unassign (Var);
+               end if;
+            end loop;
+
+            Append_Formula (F, Explanation);
+
+            Add_To_Propagate (0);
+            while True loop
+               if Unit_Propagate then
+                  exit;
+               elsif not Backjump then
+                  return False;
+               end if;
+            end loop;
+         end;
       end loop;
       return True;
-   end Solve_No_Theory;
+   end Solve_Internal;
 
    ------------
    --  Solve --
    ------------
 
    function Solve (F : Formula; M : in out Model) return Boolean is
-      Orig_Model : constant Model := M;
       Internal   : Internal_Formula (M'Length);
-
-      function Cleanup (Result : Boolean) return Boolean;
-      --  Return the given value, but first cleanup the data structures
-      --  allocated during this subprogram's run-time.
-
-      function Cleanup (Result : Boolean) return Boolean is
-      begin
-         Destroy (Internal);
-         return Result;
-      end Cleanup;
+      Result     : Boolean;
    begin
       Internal.Clauses.Reserve (F'Length);
       Append_Formula (Internal, F);
-
-      --  Solve the pure SAT problem first. Then, check if the theory accepts
-      --  the model found. If not, restart but update the formula with the
-      --  theory-provided formula.
-      while Solve_No_Theory (Internal, M) loop
-         declare
-            OK           : Boolean;
-            New_Formula  : constant Formula := T.Check (F, M, OK);
-         begin
-            if OK then
-               return Cleanup (True);
-            elsif New_Formula'Length = 0 then
-               return Cleanup (False);
-            end if;
-            M := Orig_Model;
-            Append_Formula (Internal, New_Formula);
-         end;
-      end loop;
-      return Cleanup (False);
+      Result := Solve_Internal (Internal, M);
+      Destroy (Internal);
+      return Result;
    end Solve;
 end Solver.DPLL;
