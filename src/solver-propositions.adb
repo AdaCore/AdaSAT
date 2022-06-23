@@ -14,13 +14,18 @@ package body Solver.Propositions is
      (new Proposition_Record'(Kind_Not, P));
 
    function "and" (L, R : Proposition) return Proposition is
-     (new Proposition_Record'(Kind_And, L, R));
+     (if L = null or else R = null then null
+      else new Proposition_Record'(Kind_And, L, R));
 
    function "or"  (L, R : Proposition) return Proposition is
-     (new Proposition_Record'(Kind_Or, L, R));
+     (if L = null then R
+      elsif R = null then L
+      else new Proposition_Record'(Kind_Or, L, R));
 
    function "xor" (L, R : Proposition) return Proposition is
-     (new Proposition_Record'(Kind_Xor, L, R));
+     (if L = null then R
+      elsif R = null then L
+      else new Proposition_Record'(Kind_Xor, L, R));
 
    package Clause_Vectors is new Support.Vectors (Clause, Formula);
 
