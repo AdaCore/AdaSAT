@@ -3,11 +3,12 @@ package Solver.Propositions is
 
    Empty_Proposition : constant Proposition;
 
-   function "+"   (V    : Variable)    return Proposition;
-   function "not" (P    : Proposition) return Proposition;
-   function "and" (L, R : Proposition) return Proposition;
-   function "or"  (L, R : Proposition) return Proposition;
-   function "xor" (L, R : Proposition) return Proposition;
+   function "+"     (V    : Variable)    return Proposition;
+   function "not"   (P    : Proposition) return Proposition;
+   function "and"   (L, R : Proposition) return Proposition;
+   function "or"    (L, R : Proposition) return Proposition;
+   function "xor"   (L, R : Proposition) return Proposition;
+   function Implies (L, R : Proposition) return Proposition;
 
    type CNF_Technique is (Naive, Quadra, Tseitin);
 
