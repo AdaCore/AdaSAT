@@ -284,8 +284,9 @@ package body Solver.DPLL is
                Clauses_Access := F.Occurs_List (Being_Propagated)'Access;
             end if;
 
-            for C of Clauses_Access.all loop
+            for J in 1 .. Clauses_Access.Length loop
                declare
+                  C           : constant Clause := Clauses_Access.Get (J);
                   Unset_Count : Natural := 0;
                   Last_Unset  : Literal := 0;
                   Is_Sat      : Boolean := False;
