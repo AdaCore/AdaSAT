@@ -2,8 +2,6 @@ with Support.Vectors;
 with Ada.Unchecked_Deallocation;
 
 package body Solver.DPLL is
-   type Variable_Array is array (Positive range <>) of Variable_Or_Null;
-
    type Decision_Array is array (Variable_Or_Null range <>) of Natural;
    type Antecedant_Array is array (Variable_Or_Null range <>) of Clause;
    type Literal_Mask is array (Literal range <>) of Boolean;
@@ -15,21 +13,18 @@ package body Solver.DPLL is
    package Clause_Vectors is new Support.Vectors
      (Clause, Formula);
 
-   package Variable_Vectors is new Support.Vectors
-     (Variable_Or_Null, Variable_Array);
-
    package Literal_Vectors is new Support.Vectors
      (Literal, Literal_Array);
 
    function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
      (Literal_Array_Access);
 
-   type Variable_To_Clause_Map is array (Variable range <>) of
+   type Literal_To_Clause_Map is array (Literal range <>) of
       aliased Clause_Vectors.Vector;
 
-   type Internal_Formula (Var_Count : Variable_Or_Null) is record
+   type Internal_Formula (First, Last : Literal) is record
       Clauses     : aliased Clause_Vectors.Vector;
-      Occurs_List : Variable_To_Clause_Map (1 .. Var_Count);
+      Occurs_List : Literal_To_Clause_Map (First .. Last);
    end record;
    --  An internal formula is the internal representation of a formula,
    --  which uses a vector for clauses so as to easily append new ones.
@@ -81,7 +76,7 @@ package body Solver.DPLL is
    begin
       F.Clauses.Append (C);
       for Lit of C.all loop
-         F.Occurs_List (abs Lit).Append (C);
+         F.Occurs_List (Lit).Append (C);
       end loop;
    end Append_Clause;
 
@@ -161,8 +156,8 @@ package body Solver.DPLL is
       --  was unit. If the variable was assigned a value through a decision,
       --  its antecedant is null.
 
-      To_Propagate : Variable_Vectors.Vector;
-      --  The list of variables that need to be propagated during the next
+      To_Propagate : Literal_Vectors.Vector;
+      --  The list of literals that need to be propagated during the next
       --  call to Unit_Propagate.
 
       procedure Assign
@@ -177,7 +172,7 @@ package body Solver.DPLL is
       --  Unassigns all variables that have a decision level higher than
       --  the given level.
 
-      procedure Add_To_Propagate (V : Variable_Or_Null);
+      procedure Add_To_Propagate (L : Literal);
       --  Include the given variable in the list of variables that must be
       --  propagated during the next round of Unit_Propagate.
 
@@ -218,7 +213,7 @@ package body Solver.DPLL is
          Lit_Decisions (Var) := Decision_Level;
          Lit_Antecedants (Var) := Antecedant;
          Unassigned_Left := Unassigned_Left - 1;
-         Add_To_Propagate (Var);
+         Add_To_Propagate ((if Value then -Var else +Var));
       end Assign;
 
       --------------
@@ -254,14 +249,14 @@ package body Solver.DPLL is
       -- Add_To_Propagate --
       ----------------------
 
-      procedure Add_To_Propagate (V : Variable_Or_Null) is
+      procedure Add_To_Propagate (L : Literal) is
       begin
-         for E of To_Propagate loop
-            if E = V then
+         for I in 1 .. To_Propagate.Length loop
+            if L = To_Propagate.Get (I) then
                return;
             end if;
          end loop;
-         To_Propagate.Append (V);
+         To_Propagate.Append (L);
       end Add_To_Propagate;
 
       --------------------
@@ -272,7 +267,7 @@ package body Solver.DPLL is
          type Clause_Vector_Access is access all Clause_Vectors.Vector;
 
          Clauses_Access    : Clause_Vector_Access := null;
-         Being_Propagated  : Variable_Or_Null := 0;
+         Being_Propagated  : Literal := 0;
       begin
          pragma Assert (To_Propagate.Length >= 1);
          while not To_Propagate.Is_Empty loop
@@ -436,6 +431,8 @@ package body Solver.DPLL is
             Decision_Level := Backjump_Decision_Level;
          end;
 
+         Add_To_Propagate (Learnt_Clause.Get (1));
+
          --  Unset all the variables that were set at a decision level higher
          --  than the one we are backjumping to.
          Unassign_All (Decision_Level);
@@ -443,7 +440,6 @@ package body Solver.DPLL is
          --  Add the learnt clause to the formula
          Append_Clause (F, Get_Literal_Vector_Array (Learnt_Clause));
 
-         Add_To_Propagate (Pivot);
          return True;
       end Backjump;
 
@@ -540,7 +536,7 @@ package body Solver.DPLL is
                         Backjump_Decision_Level := Lit_Decision_Level;
                      end if;
                   end loop;
-                  Add_To_Propagate (abs C (1));
+                  Add_To_Propagate (C (1));
                end loop;
 
                Decision_Level := Backjump_Decision_Level;
@@ -567,7 +563,7 @@ package body Solver.DPLL is
    ------------
 
    function Solve (F : Formula; M : in out Model) return Boolean is
-      Internal   : Internal_Formula (M'Length);
+      Internal   : Internal_Formula (-M'Last, +M'Last);
       Result     : Boolean;
    begin
       Internal.Clauses.Reserve (F'Length);
