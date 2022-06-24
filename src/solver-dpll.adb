@@ -349,7 +349,7 @@ package body Solver.DPLL is
                Unassign (Index);
             end if;
          end loop;
-         Assign (First, (if Value in True then False else True), null);
+         Assign (First, Value in False, null);
          First_Unset := First + 1;
          return True;
       end Backtrack;
