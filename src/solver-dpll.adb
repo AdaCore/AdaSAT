@@ -274,7 +274,7 @@ package body Solver.DPLL is
          Clauses_Access    : Clause_Vector_Access := null;
          Being_Propagated  : Variable_Or_Null := 0;
       begin
-         pragma Assert (To_Propagate.Length = 1);
+         pragma Assert (To_Propagate.Length >= 1);
          while not To_Propagate.Is_Empty loop
             Being_Propagated := To_Propagate.Pop;
 
@@ -539,6 +539,7 @@ package body Solver.DPLL is
                         Backjump_Decision_Level := Lit_Decision_Level;
                      end if;
                   end loop;
+                  Add_To_Propagate (abs C (1));
                end loop;
 
                Decision_Level := Backjump_Decision_Level;
@@ -548,7 +549,6 @@ package body Solver.DPLL is
 
             Append_Formula (F, Explanation);
 
-            Add_To_Propagate (0);
             while True loop
                if Unit_Propagate then
                   exit;
