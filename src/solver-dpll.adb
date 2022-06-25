@@ -563,7 +563,10 @@ package body Solver.DPLL is
    ------------
 
    function Solve (F : Formula; M : in out Model) return Boolean is
-      Internal   : Internal_Formula (-M'Last, +M'Last);
+      Is_Empty   : constant Boolean := M'Length = 0;
+      First      : constant Literal := (if Is_Empty then 1 else -M'Last);
+      Last       : constant Literal := (if Is_Empty then 0 else +M'Last);
+      Internal   : Internal_Formula (First, Last);
       Result     : Boolean;
    begin
       Internal.Clauses.Reserve (F'Length);
