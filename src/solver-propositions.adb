@@ -99,7 +99,9 @@ package body Solver.Propositions is
                      when Kind_Or =>
                         return Transform (not Q.Left and not Q.Right);
                      when Kind_Xor =>
-                        raise Program_Error;
+                        return Transform
+                          ((not Q.Left or Q.Right) and
+                           (Q.Left or not Q.Right));
                   end case;
                end;
             when Kind_And =>
