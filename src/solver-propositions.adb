@@ -14,7 +14,8 @@ package body Solver.Propositions is
      (new Proposition_Record'(Kind_Not, P));
 
    function "and" (L, R : Proposition) return Proposition is
-     (if L = null or else R = null then null
+     (if L = null then R
+      elsif R = null then L
       else new Proposition_Record'(Kind_And, L, R));
 
    function "or"  (L, R : Proposition) return Proposition is
