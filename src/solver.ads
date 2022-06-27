@@ -39,6 +39,9 @@ package Solver is
    type Model is array (Variable range <>) of Variable_Value;
    --  A mapping from variable to its value
 
+   function Image (M : Model) return String;
+   --  Returns a string representation of the model
+
    type SAT_Result is (SAT, UNSAT, UNKNOWN);
    --  The result of solving a formula
 

@@ -71,6 +71,29 @@ package body Solver is
       return To_String (Res);
    end Image;
 
+   -----------
+   -- Image --
+   -----------
+
+   function Image (M : Model) return String is
+      use Ada.Strings.Unbounded;
+
+      Res   : Unbounded_String;
+      First : Boolean := True;
+   begin
+      for I in M'Range loop
+         if M (I) in True then
+            if First then
+               First := False;
+            else
+               Append (Res, " & ");
+            end if;
+            Append (Res, I'Image);
+         end if;
+      end loop;
+      return To_String (Res);
+   end Image;
+
    ---------------
    -- Satisfies --
    ---------------
