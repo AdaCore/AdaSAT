@@ -10,6 +10,10 @@ package Solver.Propositions is
    function "xor"   (L, R : Proposition) return Proposition;
    function Implies (L, R : Proposition) return Proposition;
 
+   type Proposition_Array is array (Positive range <>) of Proposition;
+
+   function Exactly_One (P : Proposition_Array) return Proposition;
+
    type CNF_Technique is (Naive, Quadra, Tseitin);
 
    function To_CNF

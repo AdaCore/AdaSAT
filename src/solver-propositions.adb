@@ -31,6 +31,20 @@ package body Solver.Propositions is
    function Implies (L, R : Proposition) return Proposition is
      (not L or R);
 
+   function Exactly_One (P : Proposition_Array) return Proposition is
+      F : Proposition := Empty_Proposition;
+   begin
+      for Q of P loop
+         F := F or Q;
+      end loop;
+      for I in P'Range loop
+         for J in I + 1 .. P'Last loop
+            F := F and (not P (I) or not P (J));
+         end loop;
+      end loop;
+      return F;
+   end Exactly_One;
+
    package Clause_Vectors is new Support.Vectors (Clause, Formula);
 
    type Formula_Access is access Formula;
