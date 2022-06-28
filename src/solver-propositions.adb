@@ -7,6 +7,8 @@ package body Solver.Propositions is
    procedure Free is new Ada.Unchecked_Deallocation
      (Proposition_Record, Proposition);
 
+   function Is_Simple (P : Proposition) return Boolean;
+
    function "+"   (V : Variable)    return Proposition is
      (new Proposition_Record'(Kind_Var, V));
 
@@ -44,6 +46,18 @@ package body Solver.Propositions is
       end loop;
       return F;
    end Exactly_One;
+
+   function Is_Simple (P : Proposition) return Boolean is
+   begin
+      case P.Kind is
+         when Kind_Var =>
+            return True;
+         when Kind_Not =>
+            return Is_Simple (P.Inner);
+         when others =>
+            return False;
+      end case;
+   end Is_Simple;
 
    package Clause_Vectors is new Support.Vectors (Clause, Formula);
 
@@ -85,13 +99,19 @@ package body Solver.Propositions is
       end Transform_Or_Naive;
 
       function Transform_Or_Quadra (P : Proposition) return Formula is
-         Z : constant Proposition := +Fresh_Var;
-         L : constant Formula := Transform_Or_Naive
-           (not Z or P.Left);
-         R : constant Formula := Transform_Or_Naive
-           (Z or P.Right);
       begin
-         return L & R;
+         if Is_Simple (P.Left) or else Is_Simple (P.Right) then
+            return Transform_Or_Naive (P);
+         end if;
+         declare
+            Z : constant Proposition := +Fresh_Var;
+            L : constant Formula := Transform_Or_Naive
+              (not Z or P.Left);
+            R : constant Formula := Transform_Or_Naive
+              (Z or P.Right);
+         begin
+            return L & R;
+         end;
       end Transform_Or_Quadra;
 
       function Transform (P : Proposition) return Formula is
