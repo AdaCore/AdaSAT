@@ -124,6 +124,9 @@ package Support.Vectors is
    --  Move the internal elements array of vector Source to vector Target.
    --  Clear the source vector.
 
+   function Copy (Self : Vector) return Vector;
+   --  Return newly allocated copy of Self
+
    generic
       type User_Array_Access is access Elements_Array;
    function Internal_Array (Self : Vector) return User_Array_Access

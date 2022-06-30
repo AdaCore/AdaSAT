@@ -176,6 +176,22 @@ package body Support.Vectors is
       Source.Size := 0;
    end Move;
 
+   ----------
+   -- Copy --
+   ----------
+
+   function Copy (Self : Vector) return Vector is
+      N : Vector;
+   begin
+      if Self.Length > 0 then
+         N.Reserve (Self.Length);
+         for El of Self loop
+            N.Append (El);
+         end loop;
+      end if;
+      return N;
+   end Copy;
+
    --------------------
    -- Internal_Array --
    --------------------

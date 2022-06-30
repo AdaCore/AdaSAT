@@ -12,6 +12,11 @@ package body Solver.Builders is
       C.V.Append (L);
    end Add;
 
+   function Copy (C : Clause_Builder) return Clause_Builder is
+   begin
+      return (V => C.V.Copy);
+   end Copy;
+
    function Build (C : Clause_Builder) return Clause is
    begin
       return Get_Literal_Vector_Array (C.V);
