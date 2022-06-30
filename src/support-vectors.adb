@@ -181,25 +181,31 @@ package body Support.Vectors is
    --------------------
 
    function Internal_Array (Self : Vector) return User_Array_Access is
-      function To_User_Access is new Ada.Unchecked_Conversion
-        (Fat_Unconstrained_Array_Access, User_Array_Access);
-
-      Thin_Access : constant Thin_Unconstrained_Array_Access :=
-         To_Thin_Access (Self.E.all'Address);
-      --  GNAT thinks Thin_Access is a legit thin access on an unconstrained
-      --  array.
-
-      Bounds : Array_Bounds := (1, Self.Size);
-      for Bounds'Address use Self.E.all'Address - Offset;
-      --  We now manually set the values for the bounds
-
-      Fat_Access : constant Fat_Unconstrained_Array_Access :=
-         Fat_Unconstrained_Array_Access (Thin_Access);
-      --  Use an Ada conversion to create a fat access from the thin access.
-      --  We need a fat access because that's how the user access type is
-      --  layed out.
    begin
-      return To_User_Access (Fat_Access);
+      if Self.E = null then
+         return new Elements_Array'(1 .. 0 => <>);
+      end if;
+      declare
+         function To_User_Access is new Ada.Unchecked_Conversion
+           (Fat_Unconstrained_Array_Access, User_Array_Access);
+
+         Thin_Access : constant Thin_Unconstrained_Array_Access :=
+            To_Thin_Access (Self.E.all'Address);
+         --  GNAT thinks Thin_Access is a legit thin access on an unconstrained
+         --  array.
+
+         Bounds : Array_Bounds := (1, Self.Size);
+         for Bounds'Address use Self.E.all'Address - Offset;
+         --  We now manually set the values for the bounds
+
+         Fat_Access : constant Fat_Unconstrained_Array_Access :=
+            Fat_Unconstrained_Array_Access (Thin_Access);
+         --  Use an Ada conversion to create a fat access from the thin access.
+         --  We need a fat access because that's how the user access type is
+         --  layed out.
+      begin
+         return To_User_Access (Fat_Access);
+      end;
    end Internal_Array;
 
 end Support.Vectors;
