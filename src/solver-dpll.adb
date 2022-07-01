@@ -533,25 +533,27 @@ package body Solver.DPLL is
                return False;
             end if;
 
-            declare
-               Backjump_Decision_Level : Natural := 0;
-               Lit_Decision_Level      : Natural := 0;
-            begin
-               for C of Explanation loop
+            for C of Explanation loop
+               declare
+                  Backjump_Decision_Level : Natural := 0;
+                  Max_Decision_Level      : Natural := 0;
+                  Lit_Decision_Level      : Natural := 0;
+               begin
                   for I in 1 .. C.all'Length loop
                      Lit_Decision_Level := Lit_Decisions (abs C (I));
 
-                     if Lit_Decision_Level /= Decision_Level and then
-                        Lit_Decision_Level > Backjump_Decision_Level
-                     then
+                     if Lit_Decision_Level > Max_Decision_Level then
+                        Backjump_Decision_Level := Max_Decision_Level;
+                        Max_Decision_Level := Lit_Decision_Level;
+                     elsif Lit_Decision_Level > Backjump_Decision_Level then
                         Backjump_Decision_Level := Lit_Decision_Level;
                      end if;
                   end loop;
                   Add_To_Propagate (C (1));
-               end loop;
-
-               Decision_Level := Backjump_Decision_Level;
-            end;
+                  Decision_Level := Natural'Min
+                    (Decision_Level, Backjump_Decision_Level);
+               end;
+            end loop;
 
             Unassign_All (Decision_Level);
 
