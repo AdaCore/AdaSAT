@@ -282,9 +282,10 @@ package body Solver.DPLL is
             for J in 1 .. Clauses_Access.Length loop
                declare
                   C           : constant Clause := Clauses_Access.Get (J);
-                  Unset_Count : Natural := 0;
-                  Last_Unset  : Literal := 0;
-                  Is_Sat      : Boolean := False;
+                  Unset_Count : Natural  := 0;
+                  Last_Unset  : Literal  := 0;
+                  Is_Sat      : Boolean  := False;
+                  Index       : Positive := C'First;
                begin
                   for L of C.all loop
                      case M (abs L) is
@@ -308,11 +309,16 @@ package body Solver.DPLL is
                               end if;
                            end if;
                      end case;
+                     Index := Index + 1;
                   end loop;
 
                   if Is_Sat then
                      --  This clause is SAT, continue
-                     null;
+                     if Index > 1 then
+                        Last_Unset := C (Index);
+                        C (Index) := C (C'First);
+                        C (C'First) := Last_Unset;
+                     end if;
                   elsif Unset_Count = 1 then
                      --  We found a unit clause, choose the right value to
                      --  satisfy it.
