@@ -360,7 +360,6 @@ package body Solver.DPLL is
 
       function Backjump return Boolean is
          Found         : Natural := 0;
-         Lit_Index     : Positive;
          Pivot         : Variable_Or_Null := 0;
          Pivot_Index   : Natural;
          Learnt_Clause : Literal_Vectors.Vector;
@@ -382,21 +381,23 @@ package body Solver.DPLL is
          while True loop
             Found := 0;
             Pivot := 0;
-            Lit_Index := 1;
 
             --  Find all the variables that were set at this decision level
             --  and choose a pivot among those.
-            for Lit of Learnt_Clause loop
-               if Lit_Decisions (abs Lit) = Decision_Level then
-                  Found := Found + 1;
-                  if Pivot = 0 and then
-                     Lit_Antecedants (abs Lit) /= null
-                  then
-                     Pivot       := abs Lit;
-                     Pivot_Index := Lit_Index;
+            for Lit_Index in 1 .. Learnt_Clause.Length loop
+               declare
+                  Var : constant Variable := abs Learnt_Clause.Get (Lit_Index);
+               begin
+                  if Lit_Decisions (Var) = Decision_Level then
+                     Found := Found + 1;
+                     if Pivot = 0 and then
+                        Lit_Antecedants (Var) /= null
+                     then
+                        Pivot       := Var;
+                        Pivot_Index := Lit_Index;
+                     end if;
                   end if;
-               end if;
-               Lit_Index := Lit_Index + 1;
+               end;
             end loop;
 
             if Found = 1 then
