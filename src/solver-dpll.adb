@@ -301,7 +301,11 @@ package body Solver.DPLL is
                         when Unset =>
                            if L /= Last_Unset then
                               Unset_Count := Unset_Count + 1;
-                              Last_Unset := L;
+                              if Unset_Count >= 2 then
+                                 exit;
+                              else
+                                 Last_Unset := L;
+                              end if;
                            end if;
                      end case;
                   end loop;
