@@ -580,10 +580,6 @@ package body Solver.DPLL is
 
             Append_Formula (F, Explanation);
 
-            --  Put ("Number of formulas:");
-            --  Put (F.Clauses.Length'Image);
-            --  Put_Line (" (added " & Explanation'Length'Image & ")");
-
             while True loop
                if Unit_Propagate then
                   exit;
