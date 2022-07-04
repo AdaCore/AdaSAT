@@ -54,7 +54,9 @@ package body Solver.DPLL is
    --  Start looking after `From`.
 
    function Solve_Internal
-     (F : in out Internal_Formula; M : in out Model) return Boolean;
+     (F        : in out Internal_Formula;
+      M        : in out Model;
+      Min_Vars : Variable_Or_Null) return Boolean;
    --  Solve the given formula with the given partial model.
    --  This is where the DPLL/CDCL algorithm is implemented.
 
@@ -130,7 +132,9 @@ package body Solver.DPLL is
    --------------------
 
    function Solve_Internal
-     (F : in out Internal_Formula; M : in out Model) return Boolean
+     (F        : in out Internal_Formula;
+      M        : in out Model;
+      Min_Vars : Variable_Or_Null) return Boolean
    is
       Unassigned_Left    : Natural := Unassigned_Count (M);
       --  Track the number of variables that are not yet set
@@ -509,7 +513,7 @@ package body Solver.DPLL is
          --  While there are still variables that have not been set,
          --  make a decision and propagate as much as possible, or backjump if
          --  necessary.
-         while Unassigned_Left > 0 loop
+         while Unassigned_Left > 0 and then First_Unset <= Min_Vars loop
             Decide;
             while True loop
                if Unit_Propagate then
@@ -559,6 +563,10 @@ package body Solver.DPLL is
 
             Append_Formula (F, Explanation);
 
+            --  Put ("Number of formulas:");
+            --  Put (F.Clauses.Length'Image);
+            --  Put_Line (" (added " & Explanation'Length'Image & ")");
+
             while True loop
                if Unit_Propagate then
                   exit;
@@ -576,16 +584,38 @@ package body Solver.DPLL is
    ------------
 
    function Solve (F : Formula; M : in out Model) return Boolean is
-      Is_Empty   : constant Boolean := M'Length = 0;
-      First      : constant Literal := (if Is_Empty then 1 else -M'Last);
-      Last       : constant Literal := (if Is_Empty then 0 else +M'Last);
-      Internal   : Internal_Formula (First, Last);
-      Result     : Boolean;
+      Is_Empty : constant Boolean := M'Length = 0;
+      First    : constant Literal := (if Is_Empty then 1 else -M'Last);
+      Last     : constant Literal := (if Is_Empty then 0 else +M'Last);
+      Internal : Internal_Formula (First, Last);
+      Result   : Boolean;
    begin
       Internal.Clauses.Reserve (F'Length);
       Append_Formula (Internal, F);
-      Result := Solve_Internal (Internal, M);
+      Result := Solve_Internal (Internal, M, M'Last);
       Destroy (Internal);
       return Result;
    end Solve;
+
+   --------------------
+   --  Solve_Partial --
+   --------------------
+
+   function Solve_Partial
+     (F        : Formula;
+      M        : in out Model;
+      Min_Vars : Variable_Or_Null) return Boolean
+   is
+      Is_Empty : constant Boolean := M'Length = 0;
+      First    : constant Literal := (if Is_Empty then 1 else -M'Last);
+      Last     : constant Literal := (if Is_Empty then 0 else +M'Last);
+      Internal : Internal_Formula (First, Last);
+      Result   : Boolean;
+   begin
+      Internal.Clauses.Reserve (F'Length);
+      Append_Formula (Internal, F);
+      Result := Solve_Internal (Internal, M, Min_Vars);
+      Destroy (Internal);
+      return Result;
+   end Solve_Partial;
 end Solver.DPLL;
