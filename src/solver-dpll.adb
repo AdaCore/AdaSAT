@@ -164,6 +164,10 @@ package body Solver.DPLL is
       --  The list of literals that need to be propagated during the next
       --  call to Unit_Propagate.
 
+      Propagate_Mask : Literal_Mask (-M'Last .. +M'Last) := (others => False);
+      --  A literal is set to True in this mask if it is present in the
+      --  `To_Propagate` stack.
+
       procedure Assign
         (Var : Variable; Value : Boolean; Antecedant : Clause);
       --  Assigns a value to the given variable, updating the appropriate
@@ -179,6 +183,10 @@ package body Solver.DPLL is
       procedure Add_To_Propagate (L : Literal);
       --  Include the given variable in the list of variables that must be
       --  propagated during the next round of Unit_Propagate.
+
+      procedure Clear_Propagation;
+      --  Clears the propagation related data structure, in particular the
+      --  propagation stack as well as the propagation mask.
 
       function Unit_Propagate return Boolean;
       --  Implements the BCP routine.
@@ -255,13 +263,21 @@ package body Solver.DPLL is
 
       procedure Add_To_Propagate (L : Literal) is
       begin
-         for I in 1 .. To_Propagate.Length loop
-            if L = To_Propagate.Get (I) then
-               return;
-            end if;
-         end loop;
-         To_Propagate.Append (L);
+         if not Propagate_Mask (L) then
+            Propagate_Mask (L) := True;
+            To_Propagate.Append (L);
+         end if;
       end Add_To_Propagate;
+
+      -----------------------
+      -- Clear_Propagation --
+      -----------------------
+
+      procedure Clear_Propagation is
+      begin
+         To_Propagate.Clear;
+         Propagate_Mask := (others => False);
+      end Clear_Propagation;
 
       --------------------
       -- Unit_Propagate --
@@ -276,6 +292,7 @@ package body Solver.DPLL is
          pragma Assert (To_Propagate.Length >= 1);
          while not To_Propagate.Is_Empty loop
             Being_Propagated := To_Propagate.Pop;
+            Propagate_Mask (Being_Propagated) := False;
 
             if Being_Propagated = 0 then
                Clauses_Access := F.Clauses'Access;
@@ -331,7 +348,7 @@ package body Solver.DPLL is
                      --  If all variables were set but the formula is not SAT,
                      --  it is necessarily UNSAT.
                      Conflicting_Clause := C;
-                     To_Propagate.Clear;
+                     Clear_Propagation;
                      return False;
                   end if;
                end;
