@@ -7,8 +7,7 @@ package body Solver.DPLL is
    type Literal_Mask is array (Literal range <>) of Boolean;
 
    procedure Free is new Ada.Unchecked_Deallocation
-     (Literal_Array, Literal_Array_Access)
-      with Unreferenced;
+     (Literal_Array, Literal_Array_Access);
 
    package Clause_Vectors is new Support.Vectors
      (Clause, Formula);
@@ -61,7 +60,12 @@ package body Solver.DPLL is
    --  This is where the DPLL/CDCL algorithm is implemented.
 
    procedure Destroy (F : in out Internal_Formula) is
+      Mutable_C : Clause;
    begin
+      for C of F.Clauses loop
+         Mutable_C := C;
+         Free (Mutable_C);
+      end loop;
       F.Clauses.Destroy;
       for V of F.Occurs_List loop
          V.Destroy;
@@ -212,6 +216,9 @@ package body Solver.DPLL is
 
       procedure Decide;
       --  Performs the decision to set a yet unset variable
+
+      function Cleanup (Result : Boolean) return Boolean;
+      --  Cleanup allocated resources and return the given boolean result
 
       ------------
       -- Assign --
@@ -518,12 +525,23 @@ package body Solver.DPLL is
          Assign (Var, True, null);
       end Decide;
 
+      -------------
+      -- Cleanup --
+      -------------
+
+      function Cleanup (Result : Boolean) return Boolean is
+      begin
+         To_Propagate.Destroy;
+         Destroy (F);
+         return Result;
+      end Cleanup;
+
    begin
       --  Perform initial BCP: the formula might be resolvable without
       --  making any decision.
       Add_To_Propagate (0);
       if not Unit_Propagate then
-         return False;
+         return Cleanup (False);
       end if;
 
       while True loop
@@ -536,7 +554,7 @@ package body Solver.DPLL is
                if Unit_Propagate then
                   exit;
                elsif not Backjump then
-                  return False;
+                  return Cleanup (False);
                end if;
             end loop;
          end loop;
@@ -549,9 +567,9 @@ package body Solver.DPLL is
             Explanation : constant Formula := T.Check (M, OK);
          begin
             if OK then
-               return True;
+               return Cleanup (True);
             elsif Explanation'Length = 0 then
-               return False;
+               return Cleanup (False);
             end if;
 
             for C of Explanation loop
@@ -584,12 +602,12 @@ package body Solver.DPLL is
                if Unit_Propagate then
                   exit;
                elsif not Backjump then
-                  return False;
+                  return Cleanup (False);
                end if;
             end loop;
          end;
       end loop;
-      return True;
+      return Cleanup (True);
    end Solve_Internal;
 
    ------------
@@ -601,13 +619,10 @@ package body Solver.DPLL is
       First    : constant Literal := (if Is_Empty then 1 else -M'Last);
       Last     : constant Literal := (if Is_Empty then 0 else +M'Last);
       Internal : Internal_Formula (First, Last);
-      Result   : Boolean;
    begin
       Internal.Clauses.Reserve (F'Length);
       Append_Formula (Internal, F);
-      Result := Solve_Internal (Internal, M, M'Last);
-      Destroy (Internal);
-      return Result;
+      return Solve_Internal (Internal, M, M'Last);
    end Solve;
 
    --------------------
@@ -623,12 +638,9 @@ package body Solver.DPLL is
       First    : constant Literal := (if Is_Empty then 1 else -M'Last);
       Last     : constant Literal := (if Is_Empty then 0 else +M'Last);
       Internal : Internal_Formula (First, Last);
-      Result   : Boolean;
    begin
       Internal.Clauses.Reserve (F'Length);
       Append_Formula (Internal, F);
-      Result := Solve_Internal (Internal, M, Min_Vars);
-      Destroy (Internal);
-      return Result;
+      return Solve_Internal (Internal, M, Min_Vars);
    end Solve_Partial;
 end Solver.DPLL;
