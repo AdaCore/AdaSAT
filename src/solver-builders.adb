@@ -39,6 +39,26 @@ package body Solver.Builders is
       F.V.Append (C);
    end Add;
 
+   function Is_Subset (C1, C2 : Clause) return Boolean is
+     (for all X of C1.all => (for some Y of C2.all => X = Y));
+
+   procedure Add_Simplify (F : in out Formula_Builder; C : Clause) is
+      I : Natural := 1;
+      D : Clause;
+   begin
+      while I <= F.V.Length loop
+         D := F.V.Get (I);
+         if Is_Subset (C, D) then
+            F.V.Swap_And_Remove (I);
+         elsif Is_Subset (D, C) then
+            return;
+         else
+            I := I + 1;
+         end if;
+      end loop;
+      F.V.Append (C);
+   end Add_Simplify;
+
    function Build (F : Formula_Builder) return Formula is
    begin
       return Get_Clause_Vector_Array (F.V).all;
@@ -53,6 +73,7 @@ package body Solver.Builders is
       R : constant Formula := F.Build;
    begin
       F.Destroy;
+      F.V := Clause_Vectors.Empty_Vector;
       return R;
    end Build_And_Destroy;
 end Solver.Builders;

@@ -16,6 +16,7 @@ package Solver.Builders is
    Empty_Formula_Builder : constant Formula_Builder;
 
    procedure Add (F : in out Formula_Builder; C : Clause);
+   procedure Add_Simplify (F : in out Formula_Builder; C : Clause);
    function Build (F : Formula_Builder) return Formula;
    procedure Destroy (F : in out Formula_Builder);
    function Build_And_Destroy (F : in out Formula_Builder) return Formula;
