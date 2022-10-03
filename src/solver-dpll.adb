@@ -39,6 +39,7 @@ package body Solver.DPLL is
 
    function Solve_Internal
      (F        : in out Internal_Formula;
+      Ctx      : in out T.User_Context;
       M        : in out Model;
       Min_Vars : Variable_Or_Null) return Boolean;
    --  Solve the given formula with the given partial model.
@@ -122,6 +123,7 @@ package body Solver.DPLL is
 
    function Solve_Internal
      (F        : in out Internal_Formula;
+      Ctx      : in out T.User_Context;
       M        : in out Model;
       Min_Vars : Variable_Or_Null) return Boolean
    is
@@ -549,7 +551,7 @@ package body Solver.DPLL is
          --  theory-provided reason for conflict.
          declare
             OK          : Boolean;
-            Explanation : constant Formula := T.Check (M, OK);
+            Explanation : constant Formula := T.Check (Ctx, M, OK);
          begin
             if OK then
                return Cleanup (True);
@@ -599,7 +601,11 @@ package body Solver.DPLL is
    --  Solve --
    ------------
 
-   function Solve (F : Formula; M : in out Model) return Boolean is
+   function Solve
+     (F   : Formula;
+      Ctx : in out T.User_Context;
+      M   : in out Model) return Boolean
+   is
       Is_Empty : constant Boolean := M'Length = 0;
       First    : constant Literal := (if Is_Empty then 1 else -M'Last);
       Last     : constant Literal := (if Is_Empty then 0 else +M'Last);
@@ -607,7 +613,7 @@ package body Solver.DPLL is
    begin
       Internal.Clauses.Reserve (F'Length);
       Append_Formula (Internal, F);
-      return Solve_Internal (Internal, M, M'Last);
+      return Solve_Internal (Internal, Ctx, M, M'Last);
    end Solve;
 
    --------------------
@@ -616,6 +622,7 @@ package body Solver.DPLL is
 
    function Solve_Partial
      (F        : Formula;
+      Ctx      : in out T.User_Context;
       M        : in out Model;
       Min_Vars : Variable_Or_Null) return Boolean
    is
@@ -626,6 +633,6 @@ package body Solver.DPLL is
    begin
       Internal.Clauses.Reserve (F'Length);
       Append_Formula (Internal, F);
-      return Solve_Internal (Internal, M, Min_Vars);
+      return Solve_Internal (Internal, Ctx, M, Min_Vars);
    end Solve_Partial;
 end Solver.DPLL;

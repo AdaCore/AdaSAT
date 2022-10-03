@@ -1,6 +1,10 @@
 generic
+   type User_Context is private;
    pragma Warnings (Off, "referenced");
-   with function Check (M : Model; SAT : out Boolean) return Formula;
+   with function Check
+     (Ctx : in out User_Context;
+      M   : Model;
+      SAT : out Boolean) return Formula;
    --  Callback invoked by the SAT solver once a model has been found.
    --  This function should indicate whether the model also satisfies the
    --  theory through the SAT out parameter.
