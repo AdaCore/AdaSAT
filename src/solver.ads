@@ -1,3 +1,6 @@
+with Support.Vectors;
+with Ada.Unchecked_Deallocation;
+
 package Solver is
    type Variable is new Positive;
 
@@ -51,4 +54,16 @@ package Solver is
 
 private
    type Literal is new Integer;
+
+   procedure Free is new Ada.Unchecked_Deallocation
+     (Literal_Array, Literal_Array_Access);
+
+   package Clause_Vectors is new Support.Vectors
+     (Clause, Formula);
+
+   package Literal_Vectors is new Support.Vectors
+     (Literal, Literal_Array);
+
+   function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
+     (Literal_Array_Access);
 end Solver;

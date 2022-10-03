@@ -1,22 +1,7 @@
-with Support.Vectors;
-with Ada.Unchecked_Deallocation;
-
 package body Solver.DPLL is
    type Decision_Array is array (Variable_Or_Null range <>) of Natural;
    type Antecedant_Array is array (Variable_Or_Null range <>) of Clause;
    type Literal_Mask is array (Literal range <>) of Boolean;
-
-   procedure Free is new Ada.Unchecked_Deallocation
-     (Literal_Array, Literal_Array_Access);
-
-   package Clause_Vectors is new Support.Vectors
-     (Clause, Formula);
-
-   package Literal_Vectors is new Support.Vectors
-     (Literal, Literal_Array);
-
-   function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
-     (Literal_Array_Access);
 
    type Literal_To_Clause_Map is array (Literal range <>) of
       aliased Clause_Vectors.Vector;
