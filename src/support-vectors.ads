@@ -22,6 +22,8 @@ package Support.Vectors is
    --  Like Index_Type, but also covers zero, which is used to represent a
    --  dummy last index value for empty vectors.
 
+   type Element_Access is not null access all Element_Type;
+
    type Vector is tagged private
      with Iterable =>
        (First       => First_Index,
@@ -48,6 +50,11 @@ package Support.Vectors is
      (Self : Vector; Index : Iteration_Index_Type) return Element_Type
      with Inline;
    --  Get the element at Index
+
+   function Get_Access
+     (Self : Vector; Index : Iteration_Index_Type) return Element_Access
+     with Inline;
+   --  Get an access on element at Index
 
    procedure Set (Self : in out Vector; Index : Index_Type; E : Element_Type)
      with Inline;

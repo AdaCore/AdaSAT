@@ -75,6 +75,14 @@ package body Support.Vectors is
      (Self : Vector; Index : Iteration_Index_Type) return Element_Type
    is (Self.E (Index));
 
+   ----------------
+   -- Get_Access --
+   ----------------
+
+   function Get_Access
+     (Self : Vector; Index : Iteration_Index_Type) return Element_Access
+   is (Self.E (Index)'Unrestricted_Access);
+
    ---------
    -- Set --
    ---------

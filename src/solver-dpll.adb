@@ -3,12 +3,22 @@ package body Solver.DPLL is
    type Antecedant_Array is array (Variable_Or_Null range <>) of Clause;
    type Literal_Mask is array (Literal range <>) of Boolean;
 
-   type Literal_To_Clause_Map is array (Literal range <>) of
-      aliased Clause_Vectors.Vector;
+   type Watcher is record
+      Blit     : Literal;
+      Other    : Literal;
+      Literals : Clause;
+   end record;
+
+   type Watcher_Array is array (Positive range <>) of Watcher;
+
+   package Watcher_Vectors is new Support.Vectors (Watcher, Watcher_Array);
+
+   type Literal_To_Watcher_Map is array (Literal range <>) of
+      aliased Watcher_Vectors.Vector;
 
    type Internal_Formula (First, Last : Literal) is record
-      Clauses     : aliased Clause_Vectors.Vector;
-      Occurs_List : Literal_To_Clause_Map (First .. Last);
+      Clauses     : aliased Watcher_Vectors.Vector;
+      Occurs_List : Literal_To_Watcher_Map (First .. Last);
    end record;
    --  An internal formula is the internal representation of a formula,
    --  which uses a vector for clauses so as to easily append new ones.
@@ -49,7 +59,7 @@ package body Solver.DPLL is
       Mutable_C : Clause;
    begin
       for C of F.Clauses loop
-         Mutable_C := C;
+         Mutable_C := C.Literals;
          Free (Mutable_C);
       end loop;
       F.Clauses.Destroy;
@@ -65,11 +75,19 @@ package body Solver.DPLL is
    procedure Append_Clause
      (F : in out Internal_Formula; C : Clause)
    is
+      W : Watcher := (0, 0, null);
    begin
-      F.Clauses.Append (C);
-      for Lit of C.all loop
-         F.Occurs_List (Lit).Append (C);
-      end loop;
+      if C'Length > 0 then
+         W.Blit := C (C'First);
+         if C'Length = 2 then
+            W.Other := C (C'Last);
+         end if;
+         W.Literals := C;
+         for Lit of C.all loop
+            F.Occurs_List (Lit).Append (W);
+         end loop;
+      end if;
+      F.Clauses.Append (W);
    end Append_Clause;
 
    --------------------
@@ -273,15 +291,28 @@ package body Solver.DPLL is
          Propagate_Mask := (others => False);
       end Clear_Propagation;
 
+      function Val (X : Literal) return Variable_Value with Inline_Always;
+      function Val (X : Literal) return Variable_Value is
+      begin
+         if X > 0 then
+            return M (abs X);
+         else
+            return (case M (abs X) is
+               when True => False,
+               when False => True,
+               when Unset => Unset);
+         end if;
+      end Val;
+
       --------------------
       -- Unit_Propagate --
       --------------------
 
       function Unit_Propagate return Boolean is
-         type Clause_Vector_Access is access all Clause_Vectors.Vector;
+         type Watcher_Vector_Access is access all Watcher_Vectors.Vector;
 
-         Clauses_Access    : Clause_Vector_Access := null;
-         Being_Propagated  : Literal := 0;
+         Watchers_Access  : Watcher_Vector_Access := null;
+         Being_Propagated : Literal := 0;
       begin
          pragma Assert (To_Propagate.Length >= 1);
          while not To_Propagate.Is_Empty loop
@@ -289,61 +320,96 @@ package body Solver.DPLL is
             Propagate_Mask (Being_Propagated) := False;
 
             if Being_Propagated = 0 then
-               Clauses_Access := F.Clauses'Access;
+               Watchers_Access := F.Clauses'Access;
             else
-               Clauses_Access := F.Occurs_List (Being_Propagated)'Access;
+               Watchers_Access := F.Occurs_List (Being_Propagated)'Access;
             end if;
 
-            for J in 1 .. Clauses_Access.Length loop
+            for J in 1 .. Watchers_Access.Length loop
                declare
-                  C           : constant Clause := Clauses_Access.Get (J);
+                  W : constant Watcher_Vectors.Element_Access :=
+                     Watchers_Access.Get_Access (J);
+
                   Unset_Count : Natural  := 0;
                   Last_Unset  : Literal  := 0;
                   Is_Sat      : Boolean  := False;
-                  Index       : Positive := C'First;
+                  Index       : Positive := 1;
                begin
-                  for L of C.all loop
-                     case M (abs L) is
+                  if W.Other /= 0 then
+                     case Val (W.Blit) is
                         when True =>
-                           if L > 0 then
-                              Is_Sat := True;
-                              exit;
-                           end if;
+                           null;
                         when False =>
-                           if L < 0 then
-                              Is_Sat := True;
-                              exit;
-                           end if;
+                           case Val (W.Other) is
+                              when True =>
+                                 Last_Unset := W.Blit;
+                                 W.Blit := W.Other;
+                                 W.Other := Last_Unset;
+                              when False =>
+                                 Conflicting_Clause := W.Literals;
+                                 Clear_Propagation;
+                                 return False;
+                              when Unset =>
+                                 Assign (abs W.Other, W.Other > 0, W.Literals);
+                           end case;
                         when Unset =>
-                           if L /= Last_Unset then
-                              Unset_Count := Unset_Count + 1;
-                              if Unset_Count >= 2 then
-                                 exit;
-                              else
-                                 Last_Unset := L;
-                              end if;
-                           end if;
+                           case Val (W.Other) is
+                              when True =>
+                                 Last_Unset := W.Blit;
+                                 W.Blit := W.Other;
+                                 W.Other := Last_Unset;
+                              when False =>
+                                 Assign (abs W.Blit, W.Blit > 0, W.Literals);
+                              when Unset =>
+                                 null;
+                           end case;
                      end case;
-                     Index := Index + 1;
-                  end loop;
+                  elsif Val (W.Blit) not in True then
+                     for L of W.Literals.all loop
+                        case M (abs L) is
+                           when True =>
+                              if L > 0 then
+                                 Is_Sat := True;
+                                 exit;
+                              end if;
+                           when False =>
+                              if L < 0 then
+                                 Is_Sat := True;
+                                 exit;
+                              end if;
+                           when Unset =>
+                              if L /= Last_Unset then
+                                 Unset_Count := Unset_Count + 1;
+                                 if Unset_Count >= 2 then
+                                    exit;
+                                 else
+                                    Last_Unset := L;
+                                 end if;
+                              end if;
+                        end case;
+                        Index := Index + 1;
+                     end loop;
 
-                  if Is_Sat then
-                     --  This clause is SAT, continue
-                     if Index > 1 then
-                        Last_Unset := C (Index);
-                        C (Index) := C (C'First);
-                        C (C'First) := Last_Unset;
+                     if Is_Sat then
+                        --  This clause is SAT, continue
+                        W.Blit := W.Literals (Index);
+                        if Index > 1 then
+                           Last_Unset := W.Literals (Index);
+                           W.Literals (Index) := W.Literals (W.Literals'First);
+                           W.Literals (W.Literals'First) := Last_Unset;
+                        end if;
+                     elsif Unset_Count = 1 then
+                        --  We found a unit clause, choose the right value to
+                        --  satisfy it.
+                        Assign (abs Last_Unset, Last_Unset > 0, W.Literals);
+                        W.Blit := Last_Unset;
+                     elsif Unset_Count = 0 then
+                        --  If all variables were set but the formula is not
+                        --  SAT, it is necessarily UNSAT.
+                        Conflicting_Clause := W.Literals;
+                        Clear_Propagation;
+                        return False;
                      end if;
-                  elsif Unset_Count = 1 then
-                     --  We found a unit clause, choose the right value to
-                     --  satisfy it.
-                     Assign (abs Last_Unset, Last_Unset > 0, C);
-                  elsif Unset_Count = 0 then
-                     --  If all variables were set but the formula is not SAT,
-                     --  it is necessarily UNSAT.
-                     Conflicting_Clause := C;
-                     Clear_Propagation;
-                     return False;
                   end if;
                end;
             end loop;

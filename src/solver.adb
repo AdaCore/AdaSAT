@@ -20,9 +20,9 @@ package body Solver is
    -----------
 
    function "abs" (L : Literal) return Variable is
-      Res : constant Literal := abs L;
+      pragma Suppress (Range_Check);
    begin
-      return Variable (Res);
+      return Variable (Literal'(abs L));
    end "abs";
 
    -----------
