@@ -59,6 +59,16 @@ package body Solver.Builders is
       F.V.Append (C);
    end Add_Simplify;
 
+   function Is_Feasible (F : Formula_Builder; V : Variable) return Boolean is
+   begin
+      for C of F.V loop
+         if C'Length = 1 and then C (C'First) = -V then
+            return False;
+         end if;
+      end loop;
+      return True;
+   end Is_Feasible;
+
    function Build (F : Formula_Builder) return Formula is
    begin
       return Get_Clause_Vector_Array (F.V).all;

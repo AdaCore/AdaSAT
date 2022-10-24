@@ -17,6 +17,7 @@ package Solver.Builders is
 
    procedure Add (F : in out Formula_Builder; C : Clause);
    procedure Add_Simplify (F : in out Formula_Builder; C : Clause);
+   function Is_Feasible (F : Formula_Builder; V : Variable) return Boolean;
    function Build (F : Formula_Builder) return Formula;
    procedure Destroy (F : in out Formula_Builder);
    function Build_And_Destroy (F : in out Formula_Builder) return Formula;
