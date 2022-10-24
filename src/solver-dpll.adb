@@ -565,8 +565,8 @@ package body Solver.DPLL is
                   Max_Decision_Level      : Natural := 0;
                   Lit_Decision_Level      : Natural := 0;
                begin
-                  for I in 1 .. C.all'Length loop
-                     Lit_Decision_Level := Lit_Decisions (abs C (I));
+                  for Lit of C.all loop
+                     Lit_Decision_Level := Lit_Decisions (abs Lit);
 
                      if Lit_Decision_Level > Max_Decision_Level then
                         Backjump_Decision_Level := Max_Decision_Level;
