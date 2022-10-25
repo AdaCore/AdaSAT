@@ -626,6 +626,10 @@ package body Solver.DPLL is
             end if;
 
             for C of Explanation loop
+               if C'Length = 0 then
+                  return Cleanup (False);
+               end if;
+
                declare
                   Backjump_Decision_Level : Natural := 0;
                   Max_Decision_Level      : Natural := 0;
