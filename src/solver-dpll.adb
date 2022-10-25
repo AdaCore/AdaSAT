@@ -330,13 +330,14 @@ package body Solver.DPLL is
                   W : constant Watcher_Vectors.Element_Access :=
                      Watchers_Access.Get_Access (J);
 
+                  Blit_Val    : constant Variable_Value := Val (W.Blit);
                   Unset_Count : Natural  := 0;
                   Last_Unset  : Literal  := 0;
                   Is_Sat      : Boolean  := False;
-                  Index       : Positive := 1;
+                  Index       : Positive;
                begin
                   if W.Other /= 0 then
-                     case Val (W.Blit) is
+                     case Blit_Val is
                         when True =>
                            null;
                         when False =>
@@ -364,7 +365,8 @@ package body Solver.DPLL is
                                  null;
                            end case;
                      end case;
-                  elsif Val (W.Blit) not in True then
+                  elsif Blit_Val not in True then
+                     Index := W.Literals'First;
                      for L of W.Literals.all loop
                         case M (abs L) is
                            when True =>
@@ -393,10 +395,9 @@ package body Solver.DPLL is
                      if Is_Sat then
                         --  This clause is SAT, continue
                         W.Blit := W.Literals (Index);
-                        if Index > 1 then
-                           Last_Unset := W.Literals (Index);
+                        if Index > W.Literals'First then
                            W.Literals (Index) := W.Literals (W.Literals'First);
-                           W.Literals (W.Literals'First) := Last_Unset;
+                           W.Literals (W.Literals'First) := W.Blit;
                         end if;
                      elsif Unset_Count = 1 then
                         --  We found a unit clause, choose the right value to
