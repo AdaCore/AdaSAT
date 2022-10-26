@@ -173,10 +173,6 @@ package body Solver.DPLL is
       --  The list of literals that need to be propagated during the next
       --  call to Unit_Propagate.
 
-      Propagate_Mask : Literal_Mask (-M'Last .. +M'Last) := (others => False);
-      --  A literal is set to True in this mask if it is present in the
-      --  `To_Propagate` stack.
-
       procedure Assign
         (Var : Variable; Value : Boolean; Antecedant : Clause);
       --  Assigns a value to the given variable, updating the appropriate
@@ -275,10 +271,7 @@ package body Solver.DPLL is
 
       procedure Add_To_Propagate (L : Literal) is
       begin
-         if not Propagate_Mask (L) then
-            Propagate_Mask (L) := True;
-            To_Propagate.Append (L);
-         end if;
+         To_Propagate.Append (L);
       end Add_To_Propagate;
 
       -----------------------
@@ -288,7 +281,6 @@ package body Solver.DPLL is
       procedure Clear_Propagation is
       begin
          To_Propagate.Clear;
-         Propagate_Mask := (others => False);
       end Clear_Propagation;
 
       function Val (X : Literal) return Variable_Value with Inline_Always;
@@ -309,26 +301,16 @@ package body Solver.DPLL is
       --------------------
 
       function Unit_Propagate return Boolean is
-         type Watcher_Vector_Access is access all Watcher_Vectors.Vector;
-
-         Watchers_Access  : Watcher_Vector_Access := null;
-         Being_Propagated : Literal := 0;
+         Watchers : Watcher_Vectors.Vector;
       begin
          pragma Assert (To_Propagate.Length >= 1);
          while not To_Propagate.Is_Empty loop
-            Being_Propagated := To_Propagate.Pop;
-            Propagate_Mask (Being_Propagated) := False;
+            Watchers := F.Occurs_List (To_Propagate.Pop);
 
-            if Being_Propagated = 0 then
-               Watchers_Access := F.Clauses'Access;
-            else
-               Watchers_Access := F.Occurs_List (Being_Propagated)'Access;
-            end if;
-
-            for J in 1 .. Watchers_Access.Length loop
+            for J in 1 .. Watchers.Length loop
                declare
                   W : constant Watcher_Vectors.Element_Access :=
-                     Watchers_Access.Get_Access (J);
+                    Watchers.Get_Access (J);
 
                   Blit_Val    : constant Variable_Value := Val (W.Blit);
                   Unset_Count : Natural  := 0;
@@ -593,7 +575,11 @@ package body Solver.DPLL is
    begin
       --  Perform initial BCP: the formula might be resolvable without
       --  making any decision.
-      Add_To_Propagate (0);
+      for W of F.Clauses loop
+         if W.Literals'Length = 1 then
+            Add_To_Propagate (W.Literals (W.Literals'First));
+         end if;
+      end loop;
       if not Unit_Propagate then
          return Cleanup (False);
       end if;
