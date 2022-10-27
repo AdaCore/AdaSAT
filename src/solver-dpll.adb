@@ -17,7 +17,7 @@ package body Solver.DPLL is
       aliased Watcher_Vectors.Vector;
 
    type Internal_Formula (First, Last : Literal) is record
-      Clauses     : aliased Watcher_Vectors.Vector;
+      Clauses     : Clause_Vectors.Vector;
       Occurs_List : Literal_To_Watcher_Map (First .. Last);
    end record;
    --  An internal formula is the internal representation of a formula,
@@ -59,7 +59,7 @@ package body Solver.DPLL is
       Mutable_C : Clause;
    begin
       for C of F.Clauses loop
-         Mutable_C := C.Literals;
+         Mutable_C := C;
          Free (Mutable_C);
       end loop;
       F.Clauses.Destroy;
@@ -87,7 +87,7 @@ package body Solver.DPLL is
             F.Occurs_List (Lit).Append (W);
          end loop;
       end if;
-      F.Clauses.Append (W);
+      F.Clauses.Append (C);
    end Append_Clause;
 
    --------------------
@@ -575,9 +575,9 @@ package body Solver.DPLL is
    begin
       --  Perform initial BCP: the formula might be resolvable without
       --  making any decision.
-      for W of F.Clauses loop
-         if W.Literals'Length = 1 then
-            Add_To_Propagate (W.Literals (W.Literals'First));
+      for C of F.Clauses loop
+         if C'Length = 1 then
+            Add_To_Propagate (C (C'First));
          end if;
       end loop;
       if not Unit_Propagate then
