@@ -659,29 +659,10 @@ package body Solver.DPLL is
    ------------
 
    function Solve
-     (F   : Formula;
-      Ctx : in out T.User_Context;
-      M   : in out Model) return Boolean
-   is
-      Is_Empty : constant Boolean := M'Length = 0;
-      First    : constant Literal := (if Is_Empty then 1 else -M'Last);
-      Last     : constant Literal := (if Is_Empty then 0 else +M'Last);
-      Internal : Internal_Formula (First, Last);
-   begin
-      Internal.Clauses.Reserve (F'Length);
-      Append_Formula (Internal, F);
-      return Solve_Internal (Internal, Ctx, M, M'Last);
-   end Solve;
-
-   --------------------
-   --  Solve_Partial --
-   --------------------
-
-   function Solve_Partial
      (F        : Formula;
       Ctx      : in out T.User_Context;
       M        : in out Model;
-      Min_Vars : Variable_Or_Null) return Boolean
+      Min_Vars : Variable_Or_Null := 0) return Boolean
    is
       Is_Empty : constant Boolean := M'Length = 0;
       First    : constant Literal := (if Is_Empty then 1 else -M'Last);
@@ -690,6 +671,7 @@ package body Solver.DPLL is
    begin
       Internal.Clauses.Reserve (F'Length);
       Append_Formula (Internal, F);
-      return Solve_Internal (Internal, Ctx, M, Min_Vars);
-   end Solve_Partial;
+      return Solve_Internal
+        (Internal, Ctx, M, (if Min_Vars = 0 then M'Last else Min_Vars));
+   end Solve;
 end Solver.DPLL;
