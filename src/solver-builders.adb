@@ -2,11 +2,6 @@ package body Solver.Builders is
    function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
      (Literal_Array_Access);
 
-   type Formula_Access is access Formula;
-
-   function Get_Clause_Vector_Array is new Clause_Vectors.Internal_Array
-     (Formula_Access);
-
    procedure Add (C : in out Clause_Builder; L : Literal) is
    begin
       C.V.Append (L);
@@ -69,20 +64,14 @@ package body Solver.Builders is
       return True;
    end Is_Feasible;
 
-   function Build (F : Formula_Builder) return Formula is
-   begin
-      return Get_Clause_Vector_Array (F.V).all;
-   end Build;
-
    procedure Destroy (F : in out Formula_Builder) is
    begin
       F.V.Destroy;
    end Destroy;
 
    function Build_And_Destroy (F : in out Formula_Builder) return Formula is
-      R : constant Formula := F.Build;
+      R : constant Formula := F.V;
    begin
-      F.Destroy;
       F.V := Clause_Vectors.Empty_Vector;
       return R;
    end Build_And_Destroy;

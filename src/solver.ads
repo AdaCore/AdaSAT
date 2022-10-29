@@ -30,8 +30,13 @@ package Solver is
    function Image (C : Clause) return String;
    --  Returns a string representation of the clause
 
-   type Formula is array (Positive range <>) of Clause;
-   --  A CNF formula as a list of clause
+   type Clause_Array is array (Positive range <>) of Clause;
+
+   package Clause_Vectors is new Support.Vectors
+     (Clause, Clause_Array);
+
+   subtype Formula is Clause_Vectors.Vector;
+   --  A CNF formula as a vector of clause
 
    function Image (F : Formula) return String;
    --  Returns a string representation of the formula
@@ -57,9 +62,6 @@ private
 
    procedure Free is new Ada.Unchecked_Deallocation
      (Literal_Array, Literal_Array_Access);
-
-   package Clause_Vectors is new Support.Vectors
-     (Clause, Formula);
 
    package Literal_Vectors is new Support.Vectors
      (Literal, Literal_Array);

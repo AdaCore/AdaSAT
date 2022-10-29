@@ -62,9 +62,9 @@ package body Solver is
 
       Res : Unbounded_String;
    begin
-      for I in F'Range loop
-         Append (Res, Image (F (I)));
-         if I < F'Last then
+      for I in 1 .. F.Length loop
+         Append (Res, Image (F.Get (I)));
+         if I < F.Length then
             Append (Res, " & ");
          end if;
       end loop;

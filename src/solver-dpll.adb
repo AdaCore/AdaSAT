@@ -29,6 +29,11 @@ package body Solver.DPLL is
    --  Free the memory allocated for the formula's internal structures.
    --  Does not free the inner clauses.
 
+   procedure Append_Watcher
+     (F : in out Internal_Formula; C : Clause);
+   --  Create a watcher for the given non-empty clause and install it
+   --  in the internal formula.
+
    procedure Append_Clause
      (F : in out Internal_Formula; C : Clause);
    --  Append the given clause to the internal formula, updating its
@@ -55,6 +60,10 @@ package body Solver.DPLL is
    --  Solve the given formula with the given partial model.
    --  This is where the DPLL/CDCL algorithm is implemented.
 
+   -------------
+   -- Destroy --
+   -------------
+
    procedure Destroy (F : in out Internal_Formula) is
       Mutable_C : Clause;
    begin
@@ -68,6 +77,26 @@ package body Solver.DPLL is
       end loop;
    end Destroy;
 
+   --------------------
+   -- Create_Watcher --
+   --------------------
+
+   procedure Append_Watcher
+     (F : in out Internal_Formula; C : Clause)
+   is
+      W : Watcher := (C (C'First), 0, null);
+   begin
+      if C'Length = 2 then
+         W.Other := C (C'Last);
+      end if;
+
+      W.Literals := C;
+
+      for Lit of C.all loop
+         F.Occurs_List (Lit).Append (W);
+      end loop;
+   end Append_Watcher;
+
    -------------------
    -- Append_Clause --
    -------------------
@@ -75,17 +104,9 @@ package body Solver.DPLL is
    procedure Append_Clause
      (F : in out Internal_Formula; C : Clause)
    is
-      W : Watcher := (0, 0, null);
    begin
       if C'Length > 0 then
-         W.Blit := C (C'First);
-         if C'Length = 2 then
-            W.Other := C (C'Last);
-         end if;
-         W.Literals := C;
-         for Lit of C.all loop
-            F.Occurs_List (Lit).Append (W);
-         end loop;
+         Append_Watcher (F, C);
       end if;
       F.Clauses.Append (C);
    end Append_Clause;
@@ -604,16 +625,17 @@ package body Solver.DPLL is
          --  theory-provided reason for conflict.
          declare
             OK          : Boolean;
-            Explanation : constant Formula := T.Check (Ctx, M, OK);
+            Explanation : Formula := T.Check (Ctx, M, OK);
          begin
             if OK then
                return Cleanup (True);
-            elsif Explanation'Length = 0 then
+            elsif Explanation.Length = 0 then
                return Cleanup (False);
             end if;
 
             for C of Explanation loop
                if C'Length = 0 then
+                  Explanation.Destroy;
                   return Cleanup (False);
                end if;
 
@@ -642,6 +664,8 @@ package body Solver.DPLL is
 
             Append_Formula (F, Explanation);
 
+            Explanation.Destroy;
+
             while True loop
                if Unit_Propagate then
                   exit;
@@ -669,8 +693,12 @@ package body Solver.DPLL is
       Last     : constant Literal := (if Is_Empty then 0 else +M'Last);
       Internal : Internal_Formula (First, Last);
    begin
-      Internal.Clauses.Reserve (F'Length);
-      Append_Formula (Internal, F);
+      Internal.Clauses := F;
+      for C of F loop
+         if C'Length > 0 then
+            Append_Watcher (Internal, C);
+         end if;
+      end loop;
       return Solve_Internal
         (Internal, Ctx, M, (if Min_Vars = 0 then M'Last else Min_Vars));
    end Solve;

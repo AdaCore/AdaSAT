@@ -1,8 +1,6 @@
 with Ada.Unchecked_Deallocation;
 with Ada.Strings.Unbounded;
 
-with Support.Vectors;
-
 package body Solver.Propositions is
    procedure Free is new Ada.Unchecked_Deallocation
      (Proposition_Record, Proposition);
@@ -59,11 +57,23 @@ package body Solver.Propositions is
       end case;
    end Is_Simple;
 
-   package Clause_Vectors is new Support.Vectors (Clause, Formula);
+   function "&" (A, B : Formula) return Formula;
+   function "&" (A, B : Formula) return Formula is
+      R : Formula := A.Copy;
+   begin
+      for X of B loop
+         R.Append (X);
+      end loop;
+      return R;
+   end "&";
 
-   type Formula_Access is access Formula;
-
-   function Get_Array is new Clause_Vectors.Internal_Array (Formula_Access);
+   function Singleton (C : Clause) return Formula;
+   function Singleton (C : Clause) return Formula is
+      R : Formula;
+   begin
+      R.Append (C);
+      return R;
+   end Singleton;
 
    function To_CNF
      (P         : Proposition;
@@ -93,9 +103,7 @@ package body Solver.Propositions is
                F.Append (new Any'(I.all & J.all));
             end loop;
          end loop;
-         return E : constant Formula := Get_Array (F).all do
-            F.Destroy;
-         end return;
+         return F;
       end Transform_Or_Naive;
 
       function Transform_Or_Quadra (P : Proposition) return Formula is
@@ -118,14 +126,14 @@ package body Solver.Propositions is
       begin
          case P.Kind is
             when Kind_Var =>
-               return (1 => new Any'(1 => +P.Var));
+               return Singleton (new Any'(1 => +P.Var));
             when Kind_Not =>
                declare
                   Q : constant Proposition := P.Inner;
                begin
                   case Q.Kind is
                      when Kind_Var =>
-                        return (1 => new Any'(1 => -Q.Var));
+                        return Singleton (new Any'(1 => -Q.Var));
                      when Kind_Not =>
                         return Transform (Q.Inner);
                      when Kind_And =>
@@ -153,7 +161,7 @@ package body Solver.Propositions is
       end Transform;
    begin
       if P = null then
-         return (1 .. 0 => <>);
+         return Clause_Vectors.Empty_Vector;
       else
          return Transform (P);
       end if;
