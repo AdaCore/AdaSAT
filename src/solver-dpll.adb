@@ -92,9 +92,16 @@ package body Solver.DPLL is
 
       W.Literals := C;
 
-      for Lit of C.all loop
-         F.Occurs_List (Lit).Append (W);
-      end loop;
+      --  This is an AMO constraint
+      if W.Blit = 0 then
+         for Lit in C (C'First + 1) .. C (C'Last) loop
+            F.Occurs_List (-Lit).Append (W);
+         end loop;
+      else
+         for Lit of C.all loop
+            F.Occurs_List (Lit).Append (W);
+         end loop;
+      end if;
    end Append_Watcher;
 
    -------------------
@@ -322,25 +329,49 @@ package body Solver.DPLL is
       --------------------
 
       function Unit_Propagate return Boolean is
-         Watchers : Watcher_Vectors.Vector;
+         Watchers         : Watcher_Vectors.Vector;
+         Being_Propagated : Literal;
       begin
          pragma Assert (To_Propagate.Length >= 1);
          while not To_Propagate.Is_Empty loop
-            Watchers := F.Occurs_List (To_Propagate.Pop);
+            Being_Propagated := To_Propagate.Pop;
+            Watchers := F.Occurs_List (Being_Propagated);
 
             for J in 1 .. Watchers.Length loop
                declare
                   W : constant Watcher_Vectors.Element_Access :=
                     Watchers.Get_Access (J);
 
-                  Blit_Val    : constant Variable_Value := Val (W.Blit);
                   Unset_Count : Natural  := 0;
                   Last_Unset  : Literal  := 0;
                   Is_Sat      : Boolean  := False;
                   Index       : Positive;
                begin
-                  if W.Other /= 0 then
-                     case Blit_Val is
+                  if W.Blit = 0 then
+                     --  This is an AMO constraint
+                     if M (abs Being_Propagated) in True then
+                        declare
+                           From : constant Variable :=
+                              abs W.Literals (W.Literals'First + 1);
+                           To   : constant Variable :=
+                              abs W.Literals (W.Literals'Last);
+                        begin
+                           for Var in From .. To loop
+                              case M (Var) is
+                                 when True =>
+                                    if Var /= abs Being_Propagated then
+                                       raise Program_Error;
+                                    end if;
+                                 when False =>
+                                    null;
+                                 when Unset =>
+                                    Assign (Var, False, W.Literals);
+                              end case;
+                           end loop;
+                        end;
+                     end if;
+                  elsif W.Other /= 0 then
+                     case Val (W.Blit) is
                         when True =>
                            null;
                         when False =>
@@ -368,7 +399,7 @@ package body Solver.DPLL is
                                  null;
                            end case;
                      end case;
-                  elsif Blit_Val not in True then
+                  elsif Val (W.Blit) not in True then
                      Index := W.Literals'First;
                      for L of W.Literals.all loop
                         case M (abs L) is
@@ -485,6 +516,7 @@ package body Solver.DPLL is
                begin
                   if Lit_Decisions (Var) = Decision_Level then
                      Found := Found + 1;
+                     --  TODO: exit if Found > 1?
                      if Pivot = 0 and then
                         Lit_Antecedants (Var) /= null
                      then
@@ -558,12 +590,28 @@ package body Solver.DPLL is
          Mask (+Pivot) := True;
          Mask (-Pivot) := True;
 
-         for Lit of Right.all loop
-            if not Mask (Lit) then
-               Mask (Lit) := True;
-               Left.Append (Lit);
-            end if;
-         end loop;
+         if Right (Right'First) = 0 then
+            --  AMO constraint
+            for Var in
+               Variable (Right (Right'First + 1))
+               .. Variable (Right (Right'Last))
+            loop
+               if M (Var) in True then
+                  if not Mask (-Var) then
+                     Mask (-Var) := True;
+                     Left.Append (-Var);
+                  end if;
+                  exit;
+               end if;
+            end loop;
+         else
+            for Lit of Right.all loop
+               if not Mask (Lit) then
+                  Mask (Lit) := True;
+                  Left.Append (Lit);
+               end if;
+            end loop;
+         end if;
 
          --  Now we can mark the pivot as not seen.
          Mask (+Pivot) := False;
