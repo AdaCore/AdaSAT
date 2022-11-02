@@ -2,6 +2,11 @@ package body Solver.Builders is
    function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
      (Literal_Array_Access);
 
+   procedure Reserve (C : in out Clause_Builder; Size : Natural) is
+   begin
+      C.V.Reserve (Size);
+   end Reserve;
+
    procedure Add (C : in out Clause_Builder; L : Literal) is
    begin
       C.V.Append (L);

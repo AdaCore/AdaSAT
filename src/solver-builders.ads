@@ -5,6 +5,7 @@ package Solver.Builders is
 
    Empty_Clause_Builder : constant Clause_Builder;
 
+   procedure Reserve (C : in out Clause_Builder; Size : Natural);
    procedure Add (C : in out Clause_Builder; L : Literal);
    function Copy (C : Clause_Builder) return Clause_Builder;
    function Build (C : Clause_Builder) return Clause;
