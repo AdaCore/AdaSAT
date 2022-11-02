@@ -100,7 +100,7 @@ package body Solver.DPLL is
       elsif C'Length = 1 then
          F.Occurs_List (C (K)).Append ((C (K), 0, C));
       elsif C'Length = 2 then
-         F.Occurs_List (C (K)).Append ((C (K), C (K + 1), C));
+         F.Occurs_List (C (K)).Append ((C (K + 1), C (K), C));
          F.Occurs_List (C (K + 1)).Append ((C (K), C (K + 1), C));
       else
          F.Occurs_List (C (K)).Append ((C (K + 1), 0, C));
@@ -380,33 +380,16 @@ package body Solver.DPLL is
                         end;
                      end if;
                   elsif W.Other /= 0 then
+                     pragma Assert (W.Other = Being_Propagated);
                      case Val (W.Blit) is
                         when True =>
                            null;
                         when False =>
-                           case Val (W.Other) is
-                              when True =>
-                                 Last_Unset := W.Blit;
-                                 W.Blit := W.Other;
-                                 W.Other := Last_Unset;
-                              when False =>
-                                 Conflicting_Clause := W.Literals;
-                                 Clear_Propagation;
-                                 return False;
-                              when Unset =>
-                                 Assign (abs W.Other, W.Other > 0, W.Literals);
-                           end case;
+                           Conflicting_Clause := W.Literals;
+                           Clear_Propagation;
+                           return False;
                         when Unset =>
-                           case Val (W.Other) is
-                              when True =>
-                                 Last_Unset := W.Blit;
-                                 W.Blit := W.Other;
-                                 W.Other := Last_Unset;
-                              when False =>
-                                 Assign (abs W.Blit, W.Blit > 0, W.Literals);
-                              when Unset =>
-                                 null;
-                           end case;
+                           Assign (abs W.Blit, W.Blit > 0, W.Literals);
                      end case;
                   elsif Val (W.Blit) not in True then
                      if W.Literals'Length > 50 then
