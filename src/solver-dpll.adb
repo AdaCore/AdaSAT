@@ -86,23 +86,25 @@ package body Solver.DPLL is
    procedure Append_Watcher
      (F : in out Internal_Formula; C : Clause)
    is
-      W : Watcher := (C (C'First), 0, null);
+      K : constant Natural := C'First;
    begin
-      if C'Length = 2 then
-         W.Other := C (C'Last);
-      end if;
-
-      W.Literals := C;
-
-      --  This is an AMO constraint
-      if W.Blit = 0 then
-         for Lit in C (C'First + 1) .. C (C'Last) loop
-            F.Occurs_List (-Lit).Append (W);
-         end loop;
+      if C (K) = 0 then
+         --  This is a special AMO constraint
+         declare
+            W : constant Watcher := (0, 0, C);
+         begin
+            for Lit in C (K + 1) .. C (C'Last) loop
+               F.Occurs_List (-Lit).Append (W);
+            end loop;
+         end;
+      elsif C'Length = 1 then
+         F.Occurs_List (C (K)).Append ((C (K), 0, C));
+      elsif C'Length = 2 then
+         F.Occurs_List (C (K)).Append ((C (K), C (K + 1), C));
+         F.Occurs_List (C (K + 1)).Append ((C (K), C (K + 1), C));
       else
-         for Lit of C.all loop
-            F.Occurs_List (Lit).Append (W);
-         end loop;
+         F.Occurs_List (C (K)).Append ((C (K + 1), 0, C));
+         F.Occurs_List (C (K + 1)).Append ((C (K), 0, C));
       end if;
    end Append_Watcher;
 
@@ -334,19 +336,22 @@ package body Solver.DPLL is
 
       function Unit_Propagate return Boolean is
          Watchers         : Watcher_Vectors.Vector;
+         Watch_Count      : Natural;
          Being_Propagated : Literal;
+         J                : Natural;
       begin
          pragma Assert (To_Propagate.Length >= 1);
          while not To_Propagate.Is_Empty loop
             Being_Propagated := To_Propagate.Pop;
             Watchers := F.Occurs_List (Being_Propagated);
+            Watch_Count := Watchers.Length;
+            J := 1;
 
-            for J in 1 .. Watchers.Length loop
+            while J <= Watch_Count loop
                declare
                   W : constant Watcher_Vectors.Element_Access :=
                     Watchers.Get_Access (J);
 
-                  Unset_Count : Natural  := 0;
                   Last_Unset  : Literal  := 0;
                   Is_Sat      : Boolean  := False;
                   Index       : Positive;
@@ -407,53 +412,63 @@ package body Solver.DPLL is
                      if W.Literals'Length > 50 then
                         Counter := Counter + 1;
                      end if;
-                     Index := W.Literals'First;
-                     for L of W.Literals.all loop
-                        case M (abs L) is
-                           when True =>
-                              if L > 0 then
-                                 Is_Sat := True;
-                                 exit;
-                              end if;
-                           when False =>
-                              if L < 0 then
-                                 Is_Sat := True;
-                                 exit;
-                              end if;
-                           when Unset =>
-                              if L /= Last_Unset then
-                                 Unset_Count := Unset_Count + 1;
-                                 if Unset_Count >= 2 then
-                                    exit;
-                                 else
-                                    Last_Unset := L;
-                                 end if;
-                              end if;
-                        end case;
-                        Index := Index + 1;
-                     end loop;
 
-                     if Is_Sat then
-                        --  This clause is SAT, continue
-                        W.Blit := W.Literals (Index);
-                        if Index > W.Literals'First then
-                           W.Literals (Index) := W.Literals (W.Literals'First);
-                           W.Literals (W.Literals'First) := W.Blit;
-                        end if;
-                     elsif Unset_Count = 1 then
-                        --  We found a unit clause, choose the right value to
-                        --  satisfy it.
-                        Assign (abs Last_Unset, Last_Unset > 0, W.Literals);
+                     Index := W.Literals'First;
+
+                     --  Make sure the false literal is in second position
+                     --  and Index points on the other one.
+                     if Being_Propagated = W.Literals (Index) and then
+                        W.Literals'Length > 1
+                     then
+                        W.Literals (Index) := W.Literals (Index + 1);
+                        W.Literals (Index + 1) := Being_Propagated;
+                     end if;
+
+                     Last_Unset := W.Literals (Index);
+
+                     if Val (Last_Unset) in True then
+                        --  The other watched literal is true meaning the
+                        --  clause is satisfied, simply update the watch's
+                        --  blocking literal and we're done.
                         W.Blit := Last_Unset;
-                     elsif Unset_Count = 0 then
-                        --  If all variables were set but the formula is not
-                        --  SAT, it is necessarily UNSAT.
-                        Conflicting_Clause := W.Literals;
-                        Clear_Propagation;
-                        return False;
+                     else
+                        --  The other watched literal is not true, so let's
+                        --  see if we can find a true literal among the other
+                        --  literals of the clause.
+                        for K in Index + 2 .. W.Literals'Last loop
+                           if Val (W.Literals (K)) not in False then
+                              --  Found a non-false literal! swap its place
+                              --  inside the clause and update their watchers.
+                              W.Literals (Index + 1) := W.Literals (K);
+                              W.Literals (K) := Being_Propagated;
+                              F.Occurs_List
+                                (Being_Propagated).Swap_And_Remove (J);
+                              F.Occurs_List
+                                (W.Literals (Index + 1)).Append (W.all);
+                              Watch_Count := Watch_Count - 1;
+                              J := J - 1;
+                              Is_Sat := True;
+                              exit;
+                           end if;
+                        end loop;
+
+                        if not Is_Sat then
+                           --  We couldn't find another non-False literal, so
+                           --  we have either a unit clause or a conflict.
+                           if Val (Last_Unset) in False then
+                              Conflicting_Clause := W.Literals;
+                              Clear_Propagation;
+                              return False;
+                           else
+                              Assign
+                                (abs Last_Unset, Last_Unset > 0, W.Literals);
+                              W.Blit := Last_Unset;
+                           end if;
+                        end if;
                      end if;
                   end if;
                end;
+               J := J + 1;
             end loop;
          end loop;
          return True;
