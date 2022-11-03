@@ -1,5 +1,3 @@
-with Ada.Text_IO; use Ada.Text_IO;
-
 package body Solver.DPLL is
    type Decision_Array is array (Variable_Or_Null range <>) of Natural;
    type Antecedant_Array is array (Variable_Or_Null range <>) of Clause;
@@ -205,8 +203,6 @@ package body Solver.DPLL is
       --  The list of literals that need to be propagated during the next
       --  call to Unit_Propagate.
 
-      Counter : Natural := 0;
-
       procedure Assign
         (Var : Variable; Value : Boolean; Antecedant : Clause);
       --  Assigns a value to the given variable, updating the appropriate
@@ -395,10 +391,6 @@ package body Solver.DPLL is
                            Assign (abs W.Blit, W.Blit > 0, W.Literals);
                      end case;
                   elsif Val (W.Blit) not in True then
-                     if W.Literals'Length > 50 then
-                        Counter := Counter + 1;
-                     end if;
-
                      Index := W.Literals'First;
 
                      --  Make sure the false literal is in second position
@@ -707,9 +699,6 @@ package body Solver.DPLL is
             elsif Explanation.Length = 0 then
                return Cleanup (False);
             end if;
-
-            Put_Line ("Counter since last check:" & Counter'Image);
-            Counter := 0;
 
             for C of Explanation loop
                if C'Length = 0 then
