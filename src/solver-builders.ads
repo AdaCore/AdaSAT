@@ -7,6 +7,7 @@ package Solver.Builders is
 
    procedure Reserve (C : in out Clause_Builder; Size : Natural);
    procedure Add (C : in out Clause_Builder; L : Literal);
+   procedure Add_Simplify (C : in out Clause_Builder; L : Literal);
    function Copy (C : Clause_Builder) return Clause_Builder;
    function Build (C : Clause_Builder) return Clause;
    procedure Destroy (C : in out Clause_Builder);

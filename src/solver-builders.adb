@@ -12,6 +12,16 @@ package body Solver.Builders is
       C.V.Append (L);
    end Add;
 
+   procedure Add_Simplify (C : in out Clause_Builder; L : Literal) is
+   begin
+      for Lit of C.V loop
+         if Lit = L then
+            return;
+         end if;
+      end loop;
+      Add (C, L);
+   end Add_Simplify;
+
    function Copy (C : Clause_Builder) return Clause_Builder is
    begin
       return (V => C.V.Copy);
