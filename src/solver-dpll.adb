@@ -227,6 +227,9 @@ package body Solver.DPLL is
       --  Clears the propagation related data structure, in particular the
       --  propagation stack as well as the propagation mask.
 
+      function Val (X : Literal) return Variable_Value with Inline_Always;
+      --  Return evaluation of the given literal
+
       function Unit_Propagate return Boolean;
       --  Implements the BCP routine.
 
@@ -263,6 +266,7 @@ package body Solver.DPLL is
         (Var : Variable; Value : Boolean; Antecedant : Clause)
       is
       begin
+         pragma Assert (M (Var) in Unset);
          M (Var) := (if Value then True else False);
          Lit_Decisions (Var) := Decision_Level;
          Lit_Antecedants (Var) := Antecedant;
@@ -305,6 +309,7 @@ package body Solver.DPLL is
 
       procedure Add_To_Propagate (L : Literal) is
       begin
+         pragma Assert (Val (L) in False);
          To_Propagate.Append (L);
       end Add_To_Propagate;
 
@@ -317,7 +322,6 @@ package body Solver.DPLL is
          To_Propagate.Clear;
       end Clear_Propagation;
 
-      function Val (X : Literal) return Variable_Value with Inline_Always;
       function Val (X : Literal) return Variable_Value is
       begin
          if X > 0 then
@@ -349,8 +353,7 @@ package body Solver.DPLL is
 
             while J <= Watch_Count loop
                declare
-                  W : constant Watcher_Vectors.Element_Access :=
-                    Watchers.Get_Access (J);
+                  W : constant Watcher := Watchers.Get (J);
 
                   Last_Unset  : Literal  := 0;
                   Is_Sat      : Boolean  := False;
@@ -407,13 +410,17 @@ package body Solver.DPLL is
                         W.Literals (Index + 1) := Being_Propagated;
                      end if;
 
+                     pragma Assert
+                       (W.Literals'Length = 1 or else
+                        W.Literals (Index + 1) = Being_Propagated);
                      Last_Unset := W.Literals (Index);
 
                      if Val (Last_Unset) in True then
                         --  The other watched literal is true meaning the
                         --  clause is satisfied, simply update the watch's
                         --  blocking literal and we're done.
-                        W.Blit := Last_Unset;
+                        F.Occurs_List
+                          (Being_Propagated).Get_Access (J).Blit := Last_Unset;
                      else
                         --  The other watched literal is not true, so let's
                         --  see if we can find a true literal among the other
@@ -427,7 +434,7 @@ package body Solver.DPLL is
                               F.Occurs_List
                                 (Being_Propagated).Swap_And_Remove (J);
                               F.Occurs_List
-                                (W.Literals (Index + 1)).Append (W.all);
+                                (W.Literals (Index + 1)).Append (W);
                               Watch_Count := Watch_Count - 1;
                               J := J - 1;
                               Is_Sat := True;
@@ -445,7 +452,6 @@ package body Solver.DPLL is
                            else
                               Assign
                                 (abs Last_Unset, Last_Unset > 0, W.Literals);
-                              W.Blit := Last_Unset;
                            end if;
                         end if;
                      end if;
@@ -548,32 +554,47 @@ package body Solver.DPLL is
          declare
             Backjump_Decision_Level : Natural := 0;
             Lit_Decision_Level      : Natural := 0;
+            Tmp : Literal;
 
-            Literal_Count : constant Natural := Learnt_Clause.Length;
+            Learnt : constant Clause :=
+               Get_Literal_Vector_Array (Learnt_Clause);
          begin
-            for I in 1 .. Literal_Count loop
-               Lit_Decision_Level := Lit_Decisions (abs Learnt_Clause.Get (I));
+            for Lit of Learnt.all loop
+               Lit_Decision_Level := Lit_Decisions (abs Lit);
 
-               if Lit_Decision_Level /= Decision_Level and then
-                  Lit_Decision_Level > Backjump_Decision_Level
-               then
+               if Lit_Decision_Level = Decision_Level then
+                  null;
+               elsif Lit_Decision_Level > Backjump_Decision_Level then
                   Backjump_Decision_Level := Lit_Decision_Level;
                end if;
             end loop;
 
             Decision_Level := Backjump_Decision_Level;
+
+            --  Unset all the variables that were set at a decision level
+            --  higher than the one we are backjumping to.
+            Unassign_All (Decision_Level);
+
+            --  since we are building asserting clauses, only one literal
+            --  should be unset right now, and all the others should be False.
+            for I in Learnt'Range loop
+               if M (abs Learnt (I)) in Unset then
+                  pragma Assert
+                    (for all J in Learnt'Range =>
+                       (I = J or else Val (Learnt (J)) in False));
+
+                  Tmp := Learnt (I);
+                  Learnt (I) := Learnt (1);
+                  Learnt (1) := Tmp;
+
+                  --  Add the learnt clause to the formula
+                  Append_Clause (F, Learnt);
+                  Assign (abs Tmp, Tmp > 0, Learnt);
+                  return True;
+               end if;
+            end loop;
+            return False;
          end;
-
-         Add_To_Propagate (Learnt_Clause.Get (1));
-
-         --  Unset all the variables that were set at a decision level higher
-         --  than the one we are backjumping to.
-         Unassign_All (Decision_Level);
-
-         --  Add the learnt clause to the formula
-         Append_Clause (F, Get_Literal_Vector_Array (Learnt_Clause));
-
-         return True;
       end Backjump;
 
       -------------
@@ -650,11 +671,12 @@ package body Solver.DPLL is
       --  Perform initial BCP: the formula might be resolvable without
       --  making any decision.
       for C of F.Clauses loop
-         if C'Length = 1 then
-            Add_To_Propagate (C (C'First));
+         --  Check that it has not already been set by a duplicate clause
+         if C'Length = 1 and then M (abs C (C'First)) in Unset then
+            Assign (abs C (C'First), C (C'First) > 0, C);
          end if;
       end loop;
-      if not Unit_Propagate then
+      if not To_Propagate.Is_Empty and then not Unit_Propagate then
          return Cleanup (False);
       end if;
 
@@ -710,25 +732,53 @@ package body Solver.DPLL is
                         Backjump_Decision_Level := Lit_Decision_Level;
                      end if;
                   end loop;
-                  Add_To_Propagate (C (1));
                   Decision_Level := Natural'Min
                     (Decision_Level, Backjump_Decision_Level);
                end;
             end loop;
 
+            Decision_Level := 0;
             Unassign_All (Decision_Level);
 
+            --  Process the explanations so that two unset literals appear
+            --  first in the clauses to setup the two watched literals.
+            for C of Explanation loop
+               if C'Length = 1 then
+                  Assign (abs C (C'First), C (C'First) > 0, C);
+               elsif C'Length >= 3 then
+                  declare
+                     K : constant Natural := C'First;
+                     First : Literal := 0;
+                     Second : Literal := 0;
+                  begin
+                     for I in C.all'Range loop
+                        if Val (C (I)) not in False then
+                           if First = 0 then
+                              First := C (I);
+                              C (I) := C (K);
+                              C (K) := First;
+                           else
+                              Second := C (I);
+                              C (I) := C (K + 1);
+                              C (K + 1) := Second;
+                              exit;
+                           end if;
+                        end if;
+                     end loop;
+                     if First = 0 then
+                        Explanation.Destroy;
+                        return Cleanup (False);
+                     end if;
+                  end;
+               end if;
+            end loop;
             Append_Formula (F, Explanation);
 
             Explanation.Destroy;
 
-            while True loop
-               if Unit_Propagate then
-                  exit;
-               elsif not Backjump then
-                  return Cleanup (False);
-               end if;
-            end loop;
+            if not To_Propagate.Is_Empty and then not Unit_Propagate then
+               return Cleanup (False);
+            end if;
          end;
       end loop;
       return Cleanup (True);
