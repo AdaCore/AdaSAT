@@ -743,32 +743,6 @@ package body Solver.DPLL is
                return Cleanup (False);
             end if;
 
-            for C of Explanation loop
-               if C'Length = 0 then
-                  Explanation.Destroy;
-                  return Cleanup (False);
-               end if;
-
-               declare
-                  Backjump_Decision_Level : Natural := 0;
-                  Max_Decision_Level      : Natural := 0;
-                  Lit_Decision_Level      : Natural := 0;
-               begin
-                  for Lit of C.all loop
-                     Lit_Decision_Level := Lit_Decisions (abs Lit);
-
-                     if Lit_Decision_Level > Max_Decision_Level then
-                        Backjump_Decision_Level := Max_Decision_Level;
-                        Max_Decision_Level := Lit_Decision_Level;
-                     elsif Lit_Decision_Level > Backjump_Decision_Level then
-                        Backjump_Decision_Level := Lit_Decision_Level;
-                     end if;
-                  end loop;
-                  Decision_Level := Natural'Min
-                    (Decision_Level, Backjump_Decision_Level);
-               end;
-            end loop;
-
             Decision_Level := 0;
             Unassign_All (Decision_Level);
 
