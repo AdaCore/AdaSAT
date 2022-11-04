@@ -672,11 +672,11 @@ package body Solver.DPLL is
       --------------------
 
       function Reorder_Clause (C : Clause) return Natural is
-         I : Natural := 1;
+         I : Natural := C'First;
          T : Literal := 0;
       begin
          --  Find first literal to watch
-         while I <= C'Length loop
+         while I <= C'Last loop
             if Val (C (I)) not in False then
                T := C (I);
                C (I) := C (C'First);
@@ -694,7 +694,7 @@ package body Solver.DPLL is
          end if;
 
          --  Find second literal to watch
-         while I <= C'Length loop
+         while I <= C'Last loop
             if Val (C (I)) not in False then
                T := C (I);
                C (I) := C (C'First + 1);
