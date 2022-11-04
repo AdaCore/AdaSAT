@@ -510,12 +510,21 @@ package body Solver.DPLL is
             end if;
          end loop;
 
+         --  We now want to build an asserting clause out of the conflicting
+         --  clause. For that, we will replace each of its literal that was set
+         --  at the current decision level with their antecedant clause by
+         --  applying the resolution rule, until there is only one literal left
+         --  at the current decision level. That way, we know that this literal
+         --  will be the only one unset after backtracking, and therefore our
+         --  clause will be unit and allow unit propagation straightaway.
          while True loop
             Found := 0;
             Pivot := 0;
 
             --  Find all the variables that were set at this decision level
-            --  and choose a pivot among those.
+            --  and choose a pivot among those, that it, one literal which
+            --  assignment we will "explain" using literals at older decision
+            --  levels.
             for Lit_Index in 1 .. Learnt_Clause.Length loop
                declare
                   Var : constant Variable := abs Learnt_Clause.Get (Lit_Index);
@@ -545,7 +554,7 @@ package body Solver.DPLL is
 
          --  Find the decision level to which we should backjump by taking
          --  the maximum decision level among the literals of the learnt
-         --  clause.
+         --  clause which is not the current decision level.
          declare
             Backjump_Decision_Level : Natural := 0;
             Lit_Decision_Level      : Natural := 0;
@@ -559,8 +568,9 @@ package body Solver.DPLL is
 
                if Lit_Decision_Level = Decision_Level then
                   --  since we are building asserting clauses, only one literal
-                  --  should be unset right now, and all the others should be
-                  --  False.
+                  --  is at the current decision level. We put it in front of
+                  --  the clause to set it up as a watched literal, so it will
+                  --  become unset after the backtracking.
                   Asserting_Lit := Learnt (I);
                   Learnt (I) := Learnt (1);
                   Learnt (1) := Asserting_Lit;
@@ -569,15 +579,20 @@ package body Solver.DPLL is
                end if;
             end loop;
 
-            Decision_Level := Backjump_Decision_Level;
-
             --  Unset all the variables that were set at a decision level
             --  higher than the one we are backjumping to.
+            Decision_Level := Backjump_Decision_Level;
             Unassign_All (Decision_Level);
 
-            --  Add the learnt clause to the formula
+            --  Add the learnt clause to the internal formula
             Append_Clause (F, Learnt);
-            Assign (abs Learnt (1), Learnt (1) > 0, Learnt);
+
+            --  since we are building asserting clauses, the `Asserting_Lit`
+            --  extracted from the above loop will be the only literal which
+            --  is unset, with all the others being False. Since this is now
+            --  a unit clause, we can directly assign the literal so as to
+            --  satisfy the clause.
+            Assign (abs Asserting_Lit, Asserting_Lit > 0, Learnt);
             return True;
          end;
       end Backjump;
