@@ -254,6 +254,9 @@ package body Solver.DPLL is
       function Cleanup (Result : Boolean) return Boolean;
       --  Cleanup allocated resources and return the given boolean result
 
+      function Reorder_Clause (C : Clause) return Natural;
+      --  Reorder the given clause to place apprioriate watched literals first
+
       ------------
       -- Assign --
       ------------
@@ -659,6 +662,46 @@ package body Solver.DPLL is
          return Result;
       end Cleanup;
 
+      --------------------
+      -- Reorder_Clause --
+      --------------------
+
+      function Reorder_Clause (C : Clause) return Natural is
+         I : Natural := 1;
+         T : Literal := 0;
+      begin
+         --  Find first literal to watch
+         while I <= C'Length loop
+            if Val (C (I)) not in False then
+               T := C (I);
+               C (I) := C (C'First);
+               C (C'First) := T;
+               I := I + 1;
+               exit;
+            end if;
+            I := I + 1;
+         end loop;
+
+         if T = 0 then
+            --  We could not even find on non-False literal in the clause,
+            --  signal it by returning False
+            return 0;
+         end if;
+
+         --  Find second literal to watch
+         while I <= C'Length loop
+            if Val (C (I)) not in False then
+               T := C (I);
+               C (I) := C (C'First + 1);
+               C (C'First + 1) := T;
+               return 2;
+            end if;
+            I := I + 1;
+         end loop;
+
+         return 1;
+      end Reorder_Clause;
+
    begin
       --  Perform initial BCP: the formula might be resolvable without
       --  making any decision.
@@ -732,35 +775,18 @@ package body Solver.DPLL is
             --  Process the explanations so that two unset literals appear
             --  first in the clauses to setup the two watched literals.
             for C of Explanation loop
-               if C'Length = 1 then
-                  Assign (abs C (C'First), C (C'First) > 0, C);
-               elsif C'Length >= 3 then
-                  declare
-                     K : constant Natural := C'First;
-                     First : Literal := 0;
-                     Second : Literal := 0;
-                  begin
-                     for I in C.all'Range loop
-                        if Val (C (I)) not in False then
-                           if First = 0 then
-                              First := C (I);
-                              C (I) := C (K);
-                              C (K) := First;
-                           else
-                              Second := C (I);
-                              C (I) := C (K + 1);
-                              C (K + 1) := Second;
-                              exit;
-                           end if;
-                        end if;
-                     end loop;
-                     if First = 0 then
-                        Explanation.Destroy;
-                        return Cleanup (False);
-                     end if;
-                  end;
-               end if;
+               declare
+                  Non_False : constant Natural := Reorder_Clause (C);
+               begin
+                  if Non_False = 0 then
+                     Explanation.Destroy;
+                     return Cleanup (False);
+                  elsif Non_False = 1 and then Val (C (C'First)) in Unset then
+                     Assign (abs C (C'First), C (C'First) > 0, C);
+                  end if;
+               end;
             end loop;
+
             Append_Formula (F, Explanation);
 
             Explanation.Destroy;
