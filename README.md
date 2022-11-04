@@ -1,10 +1,9 @@
 # DPLL-Ada
-Implementation of a DLPP(T) solver in Ada.
+Implementation of a DLPP-based SAT solver in Ada.
 
  - [X] Conflict analysis and backjumping
- - [X] Occurrence lists
- - [ ] Two-watched literals scheme
- - [ ] Better decision heuristics (VSIDS?)
+ - [X] Two-watched literals scheme
+ - [X] Built-in support for At-Most-One constraints
 
 # Custom theories
 
