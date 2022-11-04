@@ -2,7 +2,6 @@
 
 with Ada.Command_Line;
 with Ada.Text_IO; use Ada.Text_IO;
-with Ada.Containers.Vectors;
 
 with Solver.DPLL;
 with Solver.Theory;
@@ -10,16 +9,25 @@ with Solver.Theory;
 procedure Sudoku is
    use Solver;
 
-   function Check (M : Model; SAT : out Boolean) return Formula;
+   type Empty_Context is null record;
+   function Check
+     (Ctx : in out Empty_Context;
+      M   : Model;
+      SAT : out Boolean) return Formula;
 
-   function Check (M : Model; SAT : out Boolean) return Formula is
-      pragma Unreferenced (M);
+   function Check
+     (Ctx : in out Empty_Context;
+      M   : Model;
+      SAT : out Boolean) return Formula
+   is
+      pragma Unreferenced (Ctx, M);
+      Result : Formula;
    begin
       SAT := True;
-      return [];
+      return Result;
    end Check;
 
-   package Empty_Theory is new Theory (Check);
+   package Empty_Theory is new Theory (Empty_Context, Check);
    package DPLLT is new DPLL (Empty_Theory);
 
    N : constant := 9;
@@ -28,21 +36,18 @@ procedure Sudoku is
    function Transform (I, J, K : Natural) return Variable is
      (Variable ((I - 1) * N * N + (J - 1) * N + K));
 
-   package Clause_Vectors is new Ada.Containers.Vectors
-     (Positive, Clause);
-
-   Formula_Builder : Clause_Vectors.Vector;
+   F : Formula;
 
    type Var_Array is array (Positive range <>) of Variable;
 
    procedure Exactly_One (Vars : Var_Array);
    procedure Exactly_One (Vars : Var_Array) is
    begin
-      Formula_Builder.Append (new Literal_Array'(for V of Vars => +V));
+      F.Append (new Literal_Array'(for V of Vars => +V));
 
       for I in Vars'First .. Vars'Last loop
          for J in I + 1 .. Vars'Last loop
-            Formula_Builder.Append
+            F.Append
               (new Literal_Array'(-Vars (I), -Vars (J)));
          end loop;
       end loop;
@@ -63,7 +68,7 @@ procedure Sudoku is
             Get (File => Input_File, Item => Char);
             Value := Natural'Value ("" & Char);
             if Value /= 0 then
-               Formula_Builder.Append
+               F.Append
                  (new Literal_Array'[+Transform (Y, X, Value)]);
             end if;
          end loop;
@@ -71,10 +76,8 @@ procedure Sudoku is
       Close (File => Input_File);
    end Read_Sudoku;
 
-   type Formula_Access is access Formula;
-
-   F   : Formula_Access;
    Sol : Model := [1 .. N * N * N => Unset];
+   C   : Empty_Context;
 begin
    for I in 1 .. N loop
       for S in 1 .. N loop
@@ -108,10 +111,7 @@ begin
 
    Read_Sudoku;
 
-   F := new Formula'
-     (for I in 1 .. Natural (Formula_Builder.Length) => Formula_Builder (I));
-
-   if DPLLT.Solve (F.all, Sol) then
+   if DPLLT.Solve (F, C, Sol) then
       Put_Line ("Solved");
    else
       Put_Line ("Failed solving");
@@ -127,5 +127,4 @@ begin
       New_Line;
    end loop;
    New_Line;
-   Put_Line (Satisfies (F.all, Sol)'Image);
 end Sudoku;

@@ -6,28 +6,38 @@ with Solver.Theory;
 procedure Simple is
    use Solver;
 
-   function Check (M : Model; SAT : out Boolean) return Formula;
+   type Empty_Context is null record;
+   function Check
+     (Ctx : in out Empty_Context;
+      M   : Model;
+      SAT : out Boolean) return Formula;
 
-   function Check (M : Model; SAT : out Boolean) return Formula is
-      pragma Unreferenced (M);
+   function Check
+     (Ctx : in out Empty_Context;
+      M   : Model;
+      SAT : out Boolean) return Formula
+   is
+      Result : Formula;
+      pragma Unreferenced (Ctx, M);
    begin
       SAT := True;
-      return [];
+      return Result;
    end Check;
 
-   package Empty_Theory is new Theory (Check);
+   package Empty_Theory is new Theory (Empty_Context, Check);
    package DPLLT is new DPLL (Empty_Theory);
 
-   F : constant Formula :=
-     [new Literal_Array'(-1, +2),
-      new Literal_Array'(-3, +4),
-      new Literal_Array'(-6, -5, -2),
-      new Literal_Array'(-5, +6),
-      new Literal_Array'(+5, +7),
-      new Literal_Array'(-1, +5, -7)];
+   F : Formula;
    M : Model := [1 .. 7 => Unset];
+   C : Empty_Context;
 begin
-   if DPLLT.Solve (F, M) then
+   F.Append (new Literal_Array'(-1, +2));
+   F.Append (new Literal_Array'(-3, +4));
+   F.Append (new Literal_Array'(-6, -5, -2));
+   F.Append (new Literal_Array'(-5, +6));
+   F.Append (new Literal_Array'(+5, +7));
+   F.Append (new Literal_Array'(-1, +5, -7));
+   if DPLLT.Solve (F, C, M) then
       Put_Line ("Solved");
    else
       Put_Line ("Failed solving");
@@ -37,5 +47,4 @@ begin
       Put (" ");
    end loop;
    New_Line;
-   Put_Line (Satisfies (F, M)'Image);
 end Simple;

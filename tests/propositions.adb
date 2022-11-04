@@ -8,27 +8,37 @@ procedure Propositions is
    use Solver;
    use Solver.Propositions;
 
-   function Check (M : Model; SAT : out Boolean) return Formula;
+   type Empty_Context is null record;
+   function Check
+     (Ctx : in out Empty_Context;
+      M   : Model;
+      SAT : out Boolean) return Formula;
 
-   function Check (M : Model; SAT : out Boolean) return Formula is
-      pragma Unreferenced (M);
+   function Check
+     (Ctx : in out Empty_Context;
+      M   : Model;
+      SAT : out Boolean) return Formula
+   is
+      pragma Unreferenced (Ctx, M);
+      Result : Formula;
    begin
       SAT := True;
-      return [];
+      return Result;
    end Check;
 
-   package Empty_Theory is new Theory (Check);
+   package Empty_Theory is new Theory (Empty_Context, Check);
    package DPLLT is new DPLL (Empty_Theory);
 
    P : Proposition := (+1 and +2) xor (+1 and +3);
    V : Variable := 3;
    F : constant Formula := To_CNF (P, V, Quadra);
    M : Model := [1 .. V => Unset];
+   C : Empty_Context;
 begin
    Put_Line (Image (P));
    Destroy (P);
    Put_Line (Image (F));
-   if DPLLT.Solve (F, M) then
+   if DPLLT.Solve (F, C, M) then
       Put_Line ("Solved");
    else
       Put_Line ("Failed solving");
@@ -38,5 +48,4 @@ begin
       Put (" ");
    end loop;
    New_Line;
-   Put_Line (Satisfies (F, M)'Image);
 end Propositions;
