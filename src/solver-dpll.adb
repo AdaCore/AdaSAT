@@ -399,6 +399,8 @@ package body Solver.DPLL is
                            Assign (abs W.Blit, W.Blit > 0, W.Literals);
                      end case;
                   elsif Val (W.Blit) not in True then
+                     pragma Assert (W.Blit /= Being_Propagated);
+
                      Lits := W.Literals;
 
                      --  Make sure the false literal is in second position
@@ -426,6 +428,7 @@ package body Solver.DPLL is
                         --  blocking literal and we're done.
                         W.Blit := Other_Lit;
                      else
+                        W.Blit := Other_Lit;
                         Is_Sat := False;
 
                         --  The other watched literal is not true, so let's
@@ -472,7 +475,6 @@ package body Solver.DPLL is
                               return False;
                            else
                               Assign (abs Other_Lit, Other_Lit > 0, Lits);
-                              W.Blit := Other_Lit;
                            end if;
                         end if;
                      end if;
