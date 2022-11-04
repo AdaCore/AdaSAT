@@ -352,84 +352,108 @@ package body Solver.DPLL is
 
             while J <= Watch_Count loop
                declare
-                  W : constant Watcher := Watchers.Get (J);
+                  W : constant access Watcher := Watchers.Get_Access (J);
 
-                  Last_Unset  : Literal  := 0;
-                  Is_Sat      : Boolean  := False;
-                  Index       : Positive;
+                  Is_Sat      : Boolean;
+                  Lits        : Clause;
+                  Other_Lit   : Literal;
                begin
                   if W.Blit = 0 then
-                     --  This is an AMO constraint
-                     if M (abs Being_Propagated) in True then
-                        declare
-                           From : constant Variable :=
-                              abs W.Literals (W.Literals'First + 1);
-                           To   : constant Variable :=
-                              abs W.Literals (W.Literals'Last);
-                        begin
-                           for Var in From .. To loop
-                              case M (Var) is
-                                 when True =>
-                                    if Var /= abs Being_Propagated then
-                                       raise Program_Error;
-                                    end if;
-                                 when False =>
-                                    null;
-                                 when Unset =>
-                                    Assign (Var, False, W.Literals);
-                              end case;
-                           end loop;
-                        end;
-                     end if;
+                     --  This is an AMO constraint. We know that the variable
+                     --  being propagated was set to True, so we must assign
+                     --  all the other variables to False.
+                     pragma Assert (M (abs Being_Propagated) in True);
+                     Lits := W.Literals;
+                     declare
+                        From : constant Variable := abs Lits (Lits'First + 1);
+                        To   : constant Variable := abs Lits (Lits'Last);
+                     begin
+                        for Var in From .. To loop
+                           case M (Var) is
+                              when True =>
+                                 pragma Assert (Var = abs Being_Propagated);
+                              when False =>
+                                 null;
+                              when Unset =>
+                                 Assign (Var, False, Lits);
+                           end case;
+                        end loop;
+                     end;
                   elsif W.Other /= 0 then
+                     --  This is a binary clause, we know that W.Other is the
+                     --  literal being propagated (therefore it is False), and
+                     --  `W.Blit` always holds the other literal. There we can
+                     --  determine what to do with a single lookup on `W.Blit`.
                      pragma Assert (W.Other = Being_Propagated);
                      case Val (W.Blit) is
                         when True =>
+                           --  Clause is satisfied
                            null;
                         when False =>
+                           --  Clause is conflicting
                            Conflicting_Clause := W.Literals;
                            Clear_Propagation;
                            return False;
                         when Unset =>
+                           --  Clause is unit
                            Assign (abs W.Blit, W.Blit > 0, W.Literals);
                      end case;
                   elsif Val (W.Blit) not in True then
-                     Index := W.Literals'First;
+                     Lits := W.Literals;
 
                      --  Make sure the false literal is in second position
-                     --  and Index points on the other one.
-                     if Being_Propagated = W.Literals (Index) and then
-                        W.Literals'Length > 1
+                     --  to simplify lookup expressions in the next lines.
+                     if Being_Propagated = Lits (Lits'First) and then
+                        Lits'Length > 1
                      then
-                        W.Literals (Index) := W.Literals (Index + 1);
-                        W.Literals (Index + 1) := Being_Propagated;
+                        Lits (Lits'First) := Lits (Lits'First + 1);
+                        Lits (Lits'First + 1) := Being_Propagated;
                      end if;
 
                      pragma Assert
-                       (W.Literals'Length = 1 or else
-                        W.Literals (Index + 1) = Being_Propagated);
-                     Last_Unset := W.Literals (Index);
+                       (Lits'Length = 1 or else
+                        Lits (Lits'First + 1) = Being_Propagated);
 
-                     if Val (Last_Unset) in True then
+                     --  Now retrieve the other watched literal
+                     Other_Lit := Lits (Lits'First);
+
+                     --  and let's check what's inside
+                     if Other_Lit /= W.Blit and then
+                        Val (Other_Lit) in True
+                     then
                         --  The other watched literal is true meaning the
-                        --  clause is satisfied, simply update the watch's
+                        --  clause is satisfied, simply update the watcher's
                         --  blocking literal and we're done.
-                        F.Occurs_List
-                          (Being_Propagated).Get_Access (J).Blit := Last_Unset;
+                        W.Blit := Other_Lit;
                      else
+                        Is_Sat := False;
+
                         --  The other watched literal is not true, so let's
-                        --  see if we can find a true literal among the other
-                        --  literals of the clause.
-                        for K in Index + 2 .. W.Literals'Last loop
-                           if Val (W.Literals (K)) not in False then
+                        --  see if we can find a non-False literal among the
+                        --  other literals of the clause.
+                        --  Note that at this stage, we still don't know if the
+                        --  other watched literal is False or Unset.
+                        for K in Lits'First + 2 .. Lits'Last loop
+                           if Val (Lits (K)) not in False then
                               --  Found a non-false literal! swap its place
-                              --  inside the clause and update their watchers.
-                              W.Literals (Index + 1) := W.Literals (K);
-                              W.Literals (K) := Being_Propagated;
+                              --  inside the clause to consider it as the other
+                              --  watched literal.
+                              Lits (Lits'First + 1) := Lits (K);
+                              Lits (K) := Being_Propagated;
+
+                              --  Update the occurrence list of the new watched
+                              --  literal.
+                              F.Occurs_List
+                                (Lits (Lits'First + 1)).Append (W.all);
+
+                              --  Update the occurrence list of the old watched
+                              --  literal. Note that there must be no code path
+                              --  using `W` after this line, since `W` now
+                              --  points on another watcher (we have moved the
+                              --  data inside the vector).
                               F.Occurs_List
                                 (Being_Propagated).Swap_And_Remove (J);
-                              F.Occurs_List
-                                (W.Literals (Index + 1)).Append (W);
+
                               Watch_Count := Watch_Count - 1;
                               J := J - 1;
                               Is_Sat := True;
@@ -438,15 +462,17 @@ package body Solver.DPLL is
                         end loop;
 
                         if not Is_Sat then
-                           --  We couldn't find another non-False literal, so
-                           --  we have either a unit clause or a conflict.
-                           if Val (Last_Unset) in False then
-                              Conflicting_Clause := W.Literals;
+                           --  We couldn't find another non-False literal. We
+                           --  can finally check the value of the other watched
+                           --  literal to determine if we have a unit clause or
+                           --  a conflict.
+                           if Val (Other_Lit) in False then
+                              Conflicting_Clause := Lits;
                               Clear_Propagation;
                               return False;
                            else
-                              Assign
-                                (abs Last_Unset, Last_Unset > 0, W.Literals);
+                              Assign (abs Other_Lit, Other_Lit > 0, Lits);
+                              W.Blit := Other_Lit;
                            end if;
                         end if;
                      end if;
