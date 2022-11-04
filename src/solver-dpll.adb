@@ -549,16 +549,21 @@ package body Solver.DPLL is
          declare
             Backjump_Decision_Level : Natural := 0;
             Lit_Decision_Level      : Natural := 0;
-            Tmp : Literal;
+            Asserting_Lit           : Literal;
 
             Learnt : constant Clause :=
                Get_Literal_Vector_Array (Learnt_Clause);
          begin
-            for Lit of Learnt.all loop
-               Lit_Decision_Level := Lit_Decisions (abs Lit);
+            for I in Learnt'Range loop
+               Lit_Decision_Level := Lit_Decisions (abs Learnt (I));
 
                if Lit_Decision_Level = Decision_Level then
-                  null;
+                  --  since we are building asserting clauses, only one literal
+                  --  should be unset right now, and all the others should be
+                  --  False.
+                  Asserting_Lit := Learnt (I);
+                  Learnt (I) := Learnt (1);
+                  Learnt (1) := Asserting_Lit;
                elsif Lit_Decision_Level > Backjump_Decision_Level then
                   Backjump_Decision_Level := Lit_Decision_Level;
                end if;
@@ -570,25 +575,10 @@ package body Solver.DPLL is
             --  higher than the one we are backjumping to.
             Unassign_All (Decision_Level);
 
-            --  since we are building asserting clauses, only one literal
-            --  should be unset right now, and all the others should be False.
-            for I in Learnt'Range loop
-               if M (abs Learnt (I)) in Unset then
-                  pragma Assert
-                    (for all J in Learnt'Range =>
-                       (I = J or else Val (Learnt (J)) in False));
-
-                  Tmp := Learnt (I);
-                  Learnt (I) := Learnt (1);
-                  Learnt (1) := Tmp;
-
-                  --  Add the learnt clause to the formula
-                  Append_Clause (F, Learnt);
-                  Assign (abs Tmp, Tmp > 0, Learnt);
-                  return True;
-               end if;
-            end loop;
-            return False;
+            --  Add the learnt clause to the formula
+            Append_Clause (F, Learnt);
+            Assign (abs Learnt (1), Learnt (1) > 0, Learnt);
+            return True;
          end;
       end Backjump;
 
