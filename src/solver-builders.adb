@@ -59,8 +59,11 @@ package body Solver.Builders is
       while I <= F.V.Length loop
          D := F.V.Get (I);
          if Is_Subset (C, D) then
+            Free (D);
             F.V.Swap_And_Remove (I);
          elsif Is_Subset (D, C) then
+            D := C;
+            Free (D);
             return;
          else
             I := I + 1;
