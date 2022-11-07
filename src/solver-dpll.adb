@@ -95,12 +95,11 @@ package body Solver.DPLL is
                F.Occurs_List (-Lit).Append (W);
             end loop;
          end;
-      elsif C'Length = 1 then
-         F.Occurs_List (C (K)).Append ((C (K), 0, C));
       elsif C'Length = 2 then
          F.Occurs_List (C (K)).Append ((C (K + 1), C (K), C));
          F.Occurs_List (C (K + 1)).Append ((C (K), C (K + 1), C));
       else
+         pragma Assert (C'Length > 2);
          F.Occurs_List (C (K)).Append ((C (K + 1), 0, C));
          F.Occurs_List (C (K + 1)).Append ((C (K), 0, C));
       end if;
@@ -114,7 +113,7 @@ package body Solver.DPLL is
      (F : in out Internal_Formula; C : Clause)
    is
    begin
-      if C'Length > 0 then
+      if C'Length >= 2 then
          Append_Watcher (F, C);
       end if;
       F.Clauses.Append (C);
@@ -206,7 +205,14 @@ package body Solver.DPLL is
       procedure Assign
         (Var : Variable; Value : Boolean; Antecedant : Clause);
       --  Assigns a value to the given variable, updating the appropriate
-      --  data structures.
+      --  data structures. It is assumed that the variable does not yet
+      --  have a value.
+
+      function Check_Assign
+        (Var : Variable; Value : Boolean; Antecedant : Clause) return Boolean;
+      --  Assigns a value to the given variable, updating the appropriate
+      --  data structures. Returns False if the variable already has a value
+      --  and it does not match to the given value. Otherwise returns True.
 
       procedure Unassign (Var : Variable);
       --  Unassigns a variable, updating the appropriate data structures
@@ -272,6 +278,24 @@ package body Solver.DPLL is
          Unassigned_Left := Unassigned_Left - 1;
          Add_To_Propagate ((if Value then -Var else +Var));
       end Assign;
+
+      ------------------
+      -- Check_Assign --
+      ------------------
+
+      function Check_Assign
+        (Var : Variable; Value : Boolean; Antecedant : Clause) return Boolean
+      is
+         Expected : constant Variable_Value := (if Value then True else False);
+         Actual   : constant Variable_Value := M (Var);
+      begin
+         if Actual in Unset then
+            Assign (Var, Value, Antecedant);
+            return True;
+         else
+            return Actual = Expected;
+         end if;
+      end Check_Assign;
 
       --------------
       -- Unassign --
@@ -403,18 +427,16 @@ package body Solver.DPLL is
 
                      Lits := W.Literals;
 
+                     pragma Assert (Lits'Length > 2);
+
                      --  Make sure the false literal is in second position
                      --  to simplify lookup expressions in the next lines.
-                     if Being_Propagated = Lits (Lits'First) and then
-                        Lits'Length > 1
-                     then
+                     if Being_Propagated = Lits (Lits'First) then
                         Lits (Lits'First) := Lits (Lits'First + 1);
                         Lits (Lits'First + 1) := Being_Propagated;
                      end if;
 
-                     pragma Assert
-                       (Lits'Length = 1 or else
-                        Lits (Lits'First + 1) = Being_Propagated);
+                     pragma Assert (Lits (Lits'First + 1) = Being_Propagated);
 
                      --  Now retrieve the other watched literal
                      Other_Lit := Lits (Lits'First);
@@ -740,8 +762,10 @@ package body Solver.DPLL is
       --  making any decision.
       for C of F.Clauses loop
          --  Check that it has not already been set by a duplicate clause
-         if C'Length = 1 and then M (abs C (C'First)) in Unset then
-            Assign (abs C (C'First), C (C'First) > 0, C);
+         if C'Length = 1 and then
+            not Check_Assign (abs C (C'First), C (C'First) > 0, C)
+         then
+            return Cleanup (False);
          end if;
       end loop;
       if not To_Propagate.Is_Empty and then not Unit_Propagate then
@@ -788,8 +812,12 @@ package body Solver.DPLL is
                   if Non_False = 0 then
                      Explanation.Destroy;
                      return Cleanup (False);
-                  elsif Non_False = 1 and then Val (C (C'First)) in Unset then
-                     Assign (abs C (C'First), C (C'First) > 0, C);
+                  elsif Non_False = 1 then
+                     if not Check_Assign (abs C (C'First), C (C'First) > 0, C)
+                     then
+                        Explanation.Destroy;
+                        return Cleanup (False);
+                     end if;
                   end if;
                end;
             end loop;
@@ -823,7 +851,7 @@ package body Solver.DPLL is
    begin
       Internal.Clauses := F;
       for C of F loop
-         if C'Length > 0 then
+         if C'Length >= 2 then
             Append_Watcher (Internal, C);
          end if;
       end loop;
