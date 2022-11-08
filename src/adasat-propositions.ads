@@ -1,4 +1,6 @@
-package Solver.Propositions is
+with AdaSAT.Formulas; use AdaSAT.Formulas;
+
+package AdaSAT.Propositions is
    type Proposition is private;
 
    Empty_Proposition : constant Proposition;
@@ -52,4 +54,4 @@ private
    end record;
 
    Empty_Proposition : constant Proposition := null;
-end Solver.Propositions;
+end AdaSAT.Propositions;

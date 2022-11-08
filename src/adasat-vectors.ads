@@ -14,7 +14,7 @@ with System;
 generic
    type Element_Type is private;
    type Elements_Array is array (Positive range <>) of Element_Type;
-package Support.Vectors is
+package AdaSAT.Vectors is
 
    subtype Index_Type is Positive;
 
@@ -157,4 +157,4 @@ private
 
    Empty_Vector : constant Vector := (E => null, Size => 0, Capacity => 0);
 
-end Support.Vectors;
+end AdaSAT.Vectors;

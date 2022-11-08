@@ -2,7 +2,7 @@ with System;                  use System;
 with System.Memory;           use System.Memory;
 with System.Storage_Elements; use System.Storage_Elements;
 
-package body Support.Vectors is
+package body AdaSAT.Vectors is
    type Array_Bounds is record
       First : Natural;
       Last  : Natural;
@@ -232,4 +232,4 @@ package body Support.Vectors is
       end;
    end Internal_Array;
 
-end Support.Vectors;
+end AdaSAT.Vectors;

@@ -3,11 +3,11 @@
 with Ada.Command_Line;
 with Ada.Text_IO; use Ada.Text_IO;
 
-with Solver.DPLL;
-with Solver.Theory;
+with AdaSAT.DPLL;
+with AdaSAT.Theory;
 
 procedure Sudoku is
-   use Solver;
+   use AdaSAT;
 
    type Empty_Context is null record;
    function Check

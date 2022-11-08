@@ -1,6 +1,7 @@
-with Support.Vectors;
+with AdaSAT.Formulas; use AdaSAT.Formulas;
+private with AdaSAT.Internals;
 
-package Solver.Builders is
+package AdaSAT.Builders is
    type Clause_Builder is tagged private;
 
    Empty_Clause_Builder : constant Clause_Builder;
@@ -24,9 +25,7 @@ package Solver.Builders is
    function Build_And_Destroy (F : in out Formula_Builder) return Formula;
 
 private
-
-   package Literal_Vectors is new Support.Vectors
-     (Literal, Literal_Array);
+   use AdaSAT.Internals;
 
    type Clause_Builder is tagged record
       V : Literal_Vectors.Vector;
@@ -41,4 +40,4 @@ private
 
    Empty_Formula_Builder : constant Formula_Builder :=
      (V => Clause_Vectors.Empty_Vector);
-end Solver.Builders;
+end AdaSAT.Builders;

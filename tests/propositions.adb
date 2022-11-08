@@ -1,12 +1,12 @@
 with Ada.Text_IO; use Ada.Text_IO;
 
-with Solver.DPLL;
-with Solver.Propositions;
-with Solver.Theory;
+with AdaSAT.DPLL;
+with AdaSAT.Propositions;
+with AdaSAT.Theory;
 
 procedure Propositions is
-   use Solver;
-   use Solver.Propositions;
+   use AdaSAT;
+   use AdaSAT.Propositions;
 
    type Empty_Context is null record;
    function Check

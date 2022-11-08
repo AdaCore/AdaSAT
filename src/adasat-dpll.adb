@@ -1,4 +1,7 @@
-package body Solver.DPLL is
+with AdaSAT.Vectors;
+with AdaSAT.Internals; use AdaSAT.Internals;
+
+package body AdaSAT.DPLL is
    type Decision_Array is array (Variable_Or_Null range <>) of Natural;
    type Antecedant_Array is array (Variable_Or_Null range <>) of Clause;
    type Literal_Mask is array (Literal range <>) of Boolean;
@@ -11,7 +14,7 @@ package body Solver.DPLL is
 
    type Watcher_Array is array (Positive range <>) of Watcher;
 
-   package Watcher_Vectors is new Support.Vectors (Watcher, Watcher_Array);
+   package Watcher_Vectors is new Vectors (Watcher, Watcher_Array);
 
    type Literal_To_Watcher_Map is array (Literal range <>) of
       aliased Watcher_Vectors.Vector;
@@ -858,4 +861,4 @@ package body Solver.DPLL is
       return Solve_Internal
         (Internal, Ctx, M, (if Min_Vars = 0 then M'Last else Min_Vars));
    end Solve;
-end Solver.DPLL;
+end AdaSAT.DPLL;

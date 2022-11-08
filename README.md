@@ -1,4 +1,4 @@
-# DPLL-Ada
+# AdaSAT
 Implementation of a DLPP-based SAT solver in Ada.
 
  - [X] Conflict analysis and backjumping

@@ -1,4 +1,4 @@
-package body Solver.Builders is
+package body AdaSAT.Builders is
    function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
      (Literal_Array_Access);
 
@@ -93,4 +93,4 @@ package body Solver.Builders is
       F.V := Clause_Vectors.Empty_Vector;
       return R;
    end Build_And_Destroy;
-end Solver.Builders;
+end AdaSAT.Builders;

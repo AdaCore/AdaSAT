@@ -1,3 +1,5 @@
+with AdaSAT.Formulas; use AdaSAT.Formulas;
+
 generic
    type User_Context is private;
    pragma Warnings (Off, "referenced");
@@ -12,5 +14,5 @@ generic
    --  formula that constrains the SAT problem further, or return an empty
    --  formula to indicate that the problem cannot be satisfies in the theory.
    pragma Warnings (On, "referenced");
-package Solver.Theory is
-end Solver.Theory;
+package AdaSAT.Theory is
+end AdaSAT.Theory;

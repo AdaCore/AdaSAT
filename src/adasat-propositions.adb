@@ -1,7 +1,8 @@
 with Ada.Unchecked_Deallocation;
 with Ada.Strings.Unbounded;
 
-package body Solver.Propositions is
+package body AdaSAT.Propositions is
+
    procedure Free is new Ada.Unchecked_Deallocation
      (Proposition_Record, Proposition);
 
@@ -219,4 +220,4 @@ package body Solver.Propositions is
       Free (P);
    end Destroy;
 
-end Solver.Propositions;
+end AdaSAT.Propositions;
