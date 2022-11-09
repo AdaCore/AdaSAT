@@ -24,7 +24,7 @@ package AdaSAT.Builders is
 
    procedure Add (F : in out Formula_Builder; C : Clause);
    procedure Add_Simplify (F : in out Formula_Builder; C : Clause);
-   function Is_Feasible (F : Formula_Builder; V : Variable) return Boolean;
+   function Is_Feasible (F : Formula_Builder; L : Literal) return Boolean;
    procedure Destroy (F : in out Formula_Builder);
    function Build (F : in out Formula_Builder) return Formula;
 

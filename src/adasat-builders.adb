@@ -72,10 +72,10 @@ package body AdaSAT.Builders is
       F.V.Append (C);
    end Add_Simplify;
 
-   function Is_Feasible (F : Formula_Builder; V : Variable) return Boolean is
+   function Is_Feasible (F : Formula_Builder; L : Literal) return Boolean is
    begin
       for C of F.V loop
-         if C'Length = 1 and then C (C'First) = -V then
+         if C'Length = 1 and then C (C'First) = -L then
             return False;
          end if;
       end loop;
@@ -83,7 +83,12 @@ package body AdaSAT.Builders is
    end Is_Feasible;
 
    procedure Destroy (F : in out Formula_Builder) is
+      D : Clause;
    begin
+      for C of F.V loop
+         D := C;
+         Free (D);
+      end loop;
       F.V.Destroy;
    end Destroy;
 
