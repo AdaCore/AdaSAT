@@ -7,7 +7,8 @@ with AdaSAT.Formulas; use AdaSAT.Formulas;
 with AdaSAT.Theory;
 
 --  This is the main package of this library. Users should instantiate their
---  package with their custom theory and call `Solve` with their formula.
+--  package with their custom theory (or use the SAT-only solver instantiated
+--  in package `AdaSAT.Helpers`) and call `Solve` with their formula.
 
 generic
    with package T is new Theory (<>);
