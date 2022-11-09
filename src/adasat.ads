@@ -5,6 +5,11 @@
 
 with Ada.Unchecked_Deallocation;
 
+--  The root package of the AdaSAT library. Defines the base data structures
+--  that are used everywhere else.
+--  You should instantiate the `AdaSAT.DPLL` package with your own theory or
+--  use the `AdaSAT.Helpers.DPLL_Solve` function to start solving!
+
 package AdaSAT is
    type Variable is new Positive;
 
