@@ -7,14 +7,11 @@ with Ada.Unchecked_Conversion;
 
 with System;
 
---  This package implements a very simple Vector type. It has the following
---  attributes:
---
---  - Very lightweight implementation, very few primitives.
---  - Not controlled (manual memory management).
---  - Ada 2012-like iteration via the Iterate aspect, so read-only access to
---    elements in for .. of loops.
---  - Uses realloc for resize, so faster, but won't be correct on every type.
+--  This Vector implementation is taken from Langkit_Support-Vectors and
+--  shares the same desired benefits. However it was also modified so as to
+--  be able to extract the underlying array (see function `Internal_Array`),
+--  which required changes in the allocation and deallocation routines to
+--  account for the potential array bounds we may need to insert.
 
 generic
    type Element_Type is private;

@@ -27,6 +27,8 @@ package AdaSAT is
 
    type Literal_Array is array (Positive range <>) of Literal;
    type Literal_Array_Access is access Literal_Array;
+   --  Note that we don't use a generalized access type to avoid users from
+   --  giving stack-allocated clauses to the solver.
 
    subtype Clause is Literal_Array_Access;
    --  A clause represents a disjunction of literals
