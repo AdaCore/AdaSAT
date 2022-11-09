@@ -4,28 +4,24 @@ with Ada.Command_Line;
 with Ada.Text_IO; use Ada.Text_IO;
 
 with AdaSAT.DPLL;
+with AdaSAT.Formulas;
 with AdaSAT.Theory;
 
 procedure Sudoku is
    use AdaSAT;
+   use AdaSAT.Formulas;
 
    type Empty_Context is null record;
    function Check
      (Ctx : in out Empty_Context;
       M   : Model;
-      SAT : out Boolean) return Formula;
+      F   : in out Formula) return Boolean;
 
    function Check
      (Ctx : in out Empty_Context;
       M   : Model;
-      SAT : out Boolean) return Formula
-   is
-      pragma Unreferenced (Ctx, M);
-      Result : Formula;
-   begin
-      SAT := True;
-      return Result;
-   end Check;
+      F   : in out Formula) return Boolean
+   is (True);
 
    package Empty_Theory is new Theory (Empty_Context, Check);
    package DPLLT is new DPLL (Empty_Theory);

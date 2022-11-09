@@ -794,10 +794,9 @@ package body AdaSAT.DPLL is
          --  the model found. If not, restart but update the formula with the
          --  theory-provided reason for conflict.
          declare
-            OK          : Boolean;
-            Explanation : Formula := T.Check (Ctx, M, OK);
+            Explanation : Formula;
          begin
-            if OK then
+            if T.Check (Ctx, M, Explanation) then
                return Cleanup (True);
             elsif Explanation.Length = 0 then
                return Cleanup (False);
