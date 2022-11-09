@@ -1,3 +1,8 @@
+--
+--  Copyright (C) 2019-2022, AdaCore
+--  SPDX-License-Identifier: Apache-2.0
+--
+
 with System;                  use System;
 with System.Memory;           use System.Memory;
 with System.Storage_Elements; use System.Storage_Elements;

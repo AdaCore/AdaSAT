@@ -1,3 +1,8 @@
+--
+--  Copyright (C) 2019-2022, AdaCore
+--  SPDX-License-Identifier: Apache-2.0
+--
+
 package body AdaSAT.Builders is
    function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
      (Literal_Array_Access);
