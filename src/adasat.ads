@@ -38,8 +38,6 @@ package AdaSAT is
    subtype Clause is Literal_Array_Access;
    --  A clause represents a disjunction of literals
 
-   function At_Most_One (From, To : Variable) return Clause;
-
    function Image (C : Clause) return String;
    --  Returns a string representation of the clause
 

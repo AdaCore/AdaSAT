@@ -59,6 +59,18 @@ package AdaSAT.Builders is
    --  associated memory. In particular, it could be freed immediatly if is
    --  deemed redundant.
 
+   procedure Add_At_Most_One
+     (F        : in out Formula_Builder;
+      From, To : Variable);
+   --  Add an at-most-one constraint between all variables for `From` to
+   --  `To` to the formula being built.
+   --  For example if `From = 1` and `To = 3`, this is equivalent to adding
+   --  the clauses `(¬1 | ¬2) & (¬1 | ¬3) & (¬2 | ¬3)` (represented using
+   --  the naive, pairwise-encoding of at-most-one constraints), but in
+   --  reality it generates an optimized representation of this clause which
+   --  benefits from built-in support inside the DPLL solvers to allow for
+   --  efficient resolution.
+
    function Is_Feasible (F : Formula_Builder; L : Literal) return Boolean;
    --  Run a simple analysis to determine the value of the given literal.
    --  In particular, this will return False if we can know for sure that

@@ -30,19 +30,6 @@ package body AdaSAT is
       return Variable (Literal'(abs L));
    end "abs";
 
-   ---------
-   -- AMO --
-   ---------
-
-   function At_Most_One (From, To : Variable) return Clause is
-   begin
-      if To - From = 1 then
-         return new Literal_Array'(-From, -To);
-      else
-         return new Literal_Array'(0, +From, +To);
-      end if;
-   end At_Most_One;
-
    -----------
    -- Image --
    -----------

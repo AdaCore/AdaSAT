@@ -94,7 +94,10 @@ package body AdaSAT.Builders is
    begin
       while I <= F.V.Length loop
          D := F.V.Get (I);
-         if Is_Subset (C, D) then
+         if D (D'First) = 0 then
+            --  This is an AMO constraint, nothing to do.
+            null;
+         elsif Is_Subset (C, D) then
             Free (D);
             F.V.Swap_And_Remove (I);
          elsif Is_Subset (D, C) then
@@ -107,6 +110,25 @@ package body AdaSAT.Builders is
       end loop;
       F.V.Append (C);
    end Add_Simplify;
+
+   ---------------------
+   -- Add_At_Most_One --
+   ---------------------
+
+   procedure Add_At_Most_One
+     (F        : in out Formula_Builder;
+      From, To : Variable)
+   is
+   begin
+      pragma Assert (From < To);
+      if From = To then
+         return;
+      elsif To - From = 1 then
+         F.Add (new Literal_Array'(-From, -To));
+      else
+         F.Add (new Literal_Array'(0, +From, +To));
+      end if;
+   end Add_At_Most_One;
 
    -----------------
    -- Is_Feasible --
