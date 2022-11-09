@@ -27,22 +27,17 @@ package body AdaSAT.Builders is
       return (V => C.V.Copy);
    end Copy;
 
-   function Build (C : Clause_Builder) return Clause is
-   begin
-      return Get_Literal_Vector_Array (C.V);
-   end Build;
-
    procedure Destroy (C : in out Clause_Builder) is
    begin
       C.V.Destroy;
    end Destroy;
 
-   function Build_And_Destroy (C : in out Clause_Builder) return Clause is
-      R : constant Clause := C.Build;
+   function Build (C : in out Clause_Builder) return Clause is
+      R : constant Clause := Get_Literal_Vector_Array (C.V);
    begin
       C.V := Literal_Vectors.Empty_Vector;
       return R;
-   end Build_And_Destroy;
+   end Build;
 
    procedure Add (F : in out Formula_Builder; C : Clause) is
    begin
@@ -87,10 +82,10 @@ package body AdaSAT.Builders is
       F.V.Destroy;
    end Destroy;
 
-   function Build_And_Destroy (F : in out Formula_Builder) return Formula is
+   function Build (F : in out Formula_Builder) return Formula is
       R : constant Formula := F.V;
    begin
       F.V := Clause_Vectors.Empty_Vector;
       return R;
-   end Build_And_Destroy;
+   end Build;
 end AdaSAT.Builders;

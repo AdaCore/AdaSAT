@@ -10,9 +10,8 @@ package AdaSAT.Builders is
    procedure Add (C : in out Clause_Builder; L : Literal);
    procedure Add_Simplify (C : in out Clause_Builder; L : Literal);
    function Copy (C : Clause_Builder) return Clause_Builder;
-   function Build (C : Clause_Builder) return Clause;
    procedure Destroy (C : in out Clause_Builder);
-   function Build_And_Destroy (C : in out Clause_Builder) return Clause;
+   function Build (C : in out Clause_Builder) return Clause;
 
    type Formula_Builder is tagged private;
 
@@ -22,7 +21,7 @@ package AdaSAT.Builders is
    procedure Add_Simplify (F : in out Formula_Builder; C : Clause);
    function Is_Feasible (F : Formula_Builder; V : Variable) return Boolean;
    procedure Destroy (F : in out Formula_Builder);
-   function Build_And_Destroy (F : in out Formula_Builder) return Formula;
+   function Build (F : in out Formula_Builder) return Formula;
 
 private
    use AdaSAT.Internals;
