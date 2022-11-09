@@ -7,15 +7,27 @@ package body AdaSAT.Builders is
    function Get_Literal_Vector_Array is new Literal_Vectors.Internal_Array
      (Literal_Array_Access);
 
+   -------------
+   -- Reserve --
+   -------------
+
    procedure Reserve (C : in out Clause_Builder; Size : Natural) is
    begin
       C.V.Reserve (Size);
    end Reserve;
 
+   ---------
+   -- Add --
+   ---------
+
    procedure Add (C : in out Clause_Builder; L : Literal) is
    begin
       C.V.Append (L);
    end Add;
+
+   ------------------
+   -- Add_Simplify --
+   ------------------
 
    procedure Add_Simplify (C : in out Clause_Builder; L : Literal) is
    begin
@@ -27,15 +39,27 @@ package body AdaSAT.Builders is
       Add (C, L);
    end Add_Simplify;
 
+   ----------
+   -- Copy --
+   ----------
+
    function Copy (C : Clause_Builder) return Clause_Builder is
    begin
       return (V => C.V.Copy);
    end Copy;
 
+   -------------
+   -- Destroy --
+   -------------
+
    procedure Destroy (C : in out Clause_Builder) is
    begin
       C.V.Destroy;
    end Destroy;
+
+   -----------
+   -- Build --
+   -----------
 
    function Build (C : in out Clause_Builder) return Clause is
       R : constant Clause := Get_Literal_Vector_Array (C.V);
@@ -44,13 +68,25 @@ package body AdaSAT.Builders is
       return R;
    end Build;
 
+   ---------
+   -- Add --
+   ---------
+
    procedure Add (F : in out Formula_Builder; C : Clause) is
    begin
       F.V.Append (C);
    end Add;
 
+   ---------------
+   -- Is_Subset --
+   ---------------
+
    function Is_Subset (C1, C2 : Clause) return Boolean is
      (for all X of C1.all => (for some Y of C2.all => X = Y));
+
+   ------------------
+   -- Add_Simplify --
+   ------------------
 
    procedure Add_Simplify (F : in out Formula_Builder; C : Clause) is
       I : Natural := 1;
@@ -72,6 +108,10 @@ package body AdaSAT.Builders is
       F.V.Append (C);
    end Add_Simplify;
 
+   -----------------
+   -- Is_Feasible --
+   -----------------
+
    function Is_Feasible (F : Formula_Builder; L : Literal) return Boolean is
    begin
       for C of F.V loop
@@ -82,6 +122,10 @@ package body AdaSAT.Builders is
       return True;
    end Is_Feasible;
 
+   -------------
+   -- Destroy --
+   -------------
+
    procedure Destroy (F : in out Formula_Builder) is
       D : Clause;
    begin
@@ -91,6 +135,10 @@ package body AdaSAT.Builders is
       end loop;
       F.V.Destroy;
    end Destroy;
+
+   -----------
+   -- Build --
+   -----------
 
    function Build (F : in out Formula_Builder) return Formula is
       R : constant Formula := F.V;
