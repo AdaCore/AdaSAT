@@ -1,0 +1,7 @@
+project_file: prj.gpr
+executable: sudoku
+args_matrix:
+    - ["sudoku_grids/empty.txt"]
+    - ["sudoku_grids/sudoku_15.txt"]
+    - ["sudoku_grids/sudoku_ai_escargot.txt"]
+    - ["sudoku_grids/sudoku_ai_2.txt"]

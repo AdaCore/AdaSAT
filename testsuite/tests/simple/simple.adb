@@ -8,7 +8,7 @@ procedure Simple is
    use AdaSAT.Formulas;
 
    F : Formula;
-   M : Model := [1 .. 7 => Unset];
+   M : Model := (1 .. 7 => Unset);
 begin
    F.Append (new Literal_Array'(-1, +2));
    F.Append (new Literal_Array'(-3, +4));
