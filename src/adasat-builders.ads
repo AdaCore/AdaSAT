@@ -74,8 +74,8 @@ package AdaSAT.Builders is
    function Is_Feasible (F : Formula_Builder; L : Literal) return Boolean;
    --  Run a simple analysis to determine the value of the given literal.
    --  In particular, this will return False if we can know for sure that
-   --  the literal cannot be true, and will consevatively return True for
-   --  all other cases.
+   --  the literal cannot be true by looking at the clauses already present
+   --  in the formula, and will consevatively return True for all other cases.
 
    procedure Destroy (F : in out Formula_Builder);
    --  Free the memory associatged to this builder. This will also free
