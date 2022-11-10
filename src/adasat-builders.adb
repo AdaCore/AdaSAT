@@ -94,7 +94,7 @@ package body AdaSAT.Builders is
    begin
       while I <= F.V.Length loop
          D := F.V.Get (I);
-         if D (D'First) = 0 then
+         if D'Length > 0 and then D (D'First) = 0 then
             --  This is an AMO constraint, nothing to do.
             null;
          elsif Is_Subset (C, D) then
