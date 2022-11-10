@@ -77,6 +77,10 @@ package AdaSAT.Builders is
    --  the literal cannot be true by looking at the clauses already present
    --  in the formula, and will consevatively return True for all other cases.
 
+   function Copy (F : Formula_Builder) return Formula_Builder;
+   --  Copy this formula builder and its internal clauses in a new independent
+   --  builder.
+
    procedure Destroy (F : in out Formula_Builder);
    --  Free the memory associatged to this builder. This will also free
    --  all the clauses that it was managing.

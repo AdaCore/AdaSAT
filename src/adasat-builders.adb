@@ -144,6 +144,19 @@ package body AdaSAT.Builders is
       return True;
    end Is_Feasible;
 
+   ----------
+   -- Copy --
+   ----------
+
+   function Copy (F : Formula_Builder) return Formula_Builder is
+      R : Formula_Builder;
+   begin
+      for C of F.V loop
+         R.Add (new Literal_Array'(C.all));
+      end loop;
+      return R;
+   end Copy;
+
    -------------
    -- Destroy --
    -------------
