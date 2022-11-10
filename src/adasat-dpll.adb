@@ -299,7 +299,7 @@ package body AdaSAT.DPLL is
       begin
          if Actual in Unset then
             Assign (Var, Value, Antecedant);
-            return True;
+            return Unit_Propagate;
          else
             return Actual = Expected;
          end if;
@@ -776,9 +776,7 @@ package body AdaSAT.DPLL is
             return Cleanup (False);
          end if;
       end loop;
-      if not To_Propagate.Is_Empty and then not Unit_Propagate then
-         return Cleanup (False);
-      end if;
+      pragma Assert (To_Propagate.Is_Empty);
 
       while True loop
          --  While there are still variables that have not been set,
@@ -833,9 +831,7 @@ package body AdaSAT.DPLL is
 
             Explanation.Destroy;
 
-            if not To_Propagate.Is_Empty and then not Unit_Propagate then
-               return Cleanup (False);
-            end if;
+            pragma Assert (To_Propagate.Is_Empty);
          end;
       end loop;
       return Cleanup (True);
