@@ -1,0 +1,8 @@
+with "adasat";
+
+project Prj is
+   for Main use ("wfc.adb");
+   package Compiler is
+      for Default_Switches ("Ada") use ("-gnat2022");
+   end Compiler;
+end Prj;
