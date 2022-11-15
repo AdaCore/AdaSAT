@@ -55,11 +55,6 @@ package body AdaSAT.DPLL is
    function Unassigned_Count (M : Model) return Natural;
    --  Return the number of Unset variables in the given model
 
-   function First_Unassigned
-     (M : Model; From : Variable) return Variable_Or_Null;
-   --  Return the first unassigned variable in the given model
-   --  Start looking after `From`.
-
    function Solve_Internal
      (F        : in out Internal_Formula;
       Ctx      : in out T.User_Context;
@@ -155,22 +150,6 @@ package body AdaSAT.DPLL is
       end loop;
       return Count;
    end Unassigned_Count;
-
-   ----------------------
-   -- First_Unassigned --
-   ----------------------
-
-   function First_Unassigned
-     (M : Model; From : Variable) return Variable_Or_Null
-   is
-   begin
-      for I in From .. M'Last loop
-         if M (I) in Unset then
-            return I;
-         end if;
-      end loop;
-      return 0;
-   end First_Unassigned;
 
    --------------------
    -- Solve_Internal --
@@ -707,9 +686,8 @@ package body AdaSAT.DPLL is
       ------------
 
       procedure Decide is
-         Var : constant Variable := First_Unassigned (M, First_Unset);
+         Var : constant Variable := Next_Decision (M, First_Unset);
       begin
-         First_Unset := Var + 1;
          Decision_Level := Decision_Level + 1;
          Assign (Var, True, null);
       end Decide;

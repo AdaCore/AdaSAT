@@ -3,16 +3,22 @@
 --  SPDX-License-Identifier: Apache-2.0
 --
 
+with AdaSAT.Decisions;
 with AdaSAT.Formulas; use AdaSAT.Formulas;
 with AdaSAT.Theory;
 
 --  This is the main package of this library. Users should instantiate their
 --  package with their custom theory (or use the SAT-only solver instantiated
 --  in package `AdaSAT.Helpers`) and call `Solve` with their formula.
+--  A custom decision procedures can be given, else the default one will be
+--  used (see `AdaSAT.Decisions` for more information).
 
 generic
    with package T is new Theory (<>);
    --  The theory against which SAT models will be checked
+   with function Next_Decision
+     (M : Model; First_Unset : in out Variable) return Variable_Or_Null
+   is AdaSAT.Decisions.First_Unassigned;
 package AdaSAT.DPLL is
    function Solve
      (F        : Formula;
