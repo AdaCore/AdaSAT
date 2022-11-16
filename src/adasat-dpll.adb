@@ -332,6 +332,10 @@ package body AdaSAT.DPLL is
          To_Propagate.Clear;
       end Clear_Propagation;
 
+      ---------
+      -- Val --
+      ---------
+
       function Val (X : Literal) return Variable_Value is
       begin
          if X > 0 then
