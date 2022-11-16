@@ -648,14 +648,8 @@ package body AdaSAT.DPLL is
          Mask        : in out Literal_Mask;
          Pivot_Index : Natural)
       is
-         Pivot : constant Variable := abs Left.Get (Pivot_Index);
       begin
          Left.Swap_And_Remove (Pivot_Index);
-
-         --  Assume pivot is seen so that the following loop
-         --  never considers adding the pivot back into Left.
-         Mask (+Pivot) := True;
-         Mask (-Pivot) := True;
 
          if Right (Right'First) = 0 then
             --  AMO constraint
@@ -679,10 +673,6 @@ package body AdaSAT.DPLL is
                end if;
             end loop;
          end if;
-
-         --  Now we can mark the pivot as not seen.
-         Mask (+Pivot) := False;
-         Mask (-Pivot) := False;
       end Resolve;
 
       ------------
