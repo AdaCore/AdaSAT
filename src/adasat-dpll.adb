@@ -170,9 +170,6 @@ package body AdaSAT.DPLL is
       Decision_Level     : Natural := 0;
       --  The current decision level
 
-      Conflicting_Clause : Clause  := null;
-      --  The clause that triggered the conflict
-
       Lit_Decisions      : Decision_Array :=
         (1 .. Variable_Or_Null (Unassigned_Left) => 0);
       --  Maps each variable to the decision level in which a value was
@@ -188,6 +185,13 @@ package body AdaSAT.DPLL is
       To_Propagate : Literal_Vectors.Vector;
       --  The list of literals that need to be propagated during the next
       --  call to Unit_Propagate.
+
+      Learnt_Clause : Literal_Vectors.Vector;
+      --  The vector we use to generate the learnt clause during a backjump
+
+      Learnt_Mask : Literal_Mask (-M'Last .. +M'Last);
+      --  The mask used during backjump to indicate which literals are
+      --  already present (or were present at some point) in the learnt clause.
 
       procedure Assign
         (Var : Variable; Value : Boolean; Antecedant : Clause);
@@ -226,20 +230,28 @@ package body AdaSAT.DPLL is
       --  Implements chronological backtracking. This is not used ATM but
       --  is kept here to allow experiments.
 
+      procedure Setup_Backjump (Conflicting_Clause : Clause);
+      --  Prepare data structures for an incoming backjump. This overload
+      --  takes the conflicting clause and initializes the learnt clause
+      --  with it.
+
+      procedure Setup_Backjump (First_Lit, Second_Lit : Literal);
+      --  Prepare data structures for an incoming backjump. This overload
+      --  takes two literals of a virtual clause and initializes the learnt
+      --  clause with it. This is used to avoid allocating an actual clause
+      --  when backjumping from a conflict that arose during an At-Most-One
+      --  constraint propagation.
+
       function Backjump return Boolean;
       --  Implements non-chronological backtracking through conflict analysis
 
-      procedure Resolve
-        (Left        : in out Literal_Vectors.Vector;
-         Right       : Clause;
-         Mask        : in out Literal_Mask;
-         Pivot_Index : Natural);
-      --  Implements the resolution rule: Assuming that Left and Right both
-      --  contain an occurrence of Pivot, update the Left clause to be the
-      --  resolvent, that is the concatenation of the Left and Right clauses
-      --  without occurrences of the pivot.
-      --  Mask should map literals that appear in the Left clause to True and
-      --  the rest to False.
+      procedure Resolve (Right : Clause; Pivot_Index : Natural);
+      --  Implements the resolution rule between ``Learnt_Clause`` and
+      --  ``Right``: Assuming that both clauses contain an occurrence of Pivot,
+      --  update ``Learnt_Clause`` to be the resolvent of the rule, that is the
+      --  concatenation of itself and the ``Right`` clause without occurrences
+      --  of the pivot. Mask should be updated so that the new literals that
+      --  appear in ``Learnt_Clause`` clause are set to True.
 
       procedure Decide;
       --  Performs the decision to set a yet unset variable
@@ -386,7 +398,13 @@ package body AdaSAT.DPLL is
                         for Var in From .. To loop
                            case M (Var) is
                               when True =>
-                                 pragma Assert (Var = abs Being_Propagated);
+                                 --  If another variable is already true, we
+                                 --  have a conflict.
+                                 if Var /= abs Being_Propagated then
+                                    Setup_Backjump (-Var, Being_Propagated);
+                                    Clear_Propagation;
+                                    return False;
+                                 end if;
                               when False =>
                                  null;
                               when Unset =>
@@ -406,7 +424,7 @@ package body AdaSAT.DPLL is
                            null;
                         when False =>
                            --  Clause is conflicting
-                           Conflicting_Clause := W.Literals;
+                           Setup_Backjump (W.Literals);
                            Clear_Propagation;
                            return False;
                         when Unset =>
@@ -483,7 +501,7 @@ package body AdaSAT.DPLL is
                            --  literal to determine if we have a unit clause or
                            --  a conflict.
                            if Val (Other_Lit) in False then
-                              Conflicting_Clause := Lits;
+                              Setup_Backjump (Lits);
                               Clear_Propagation;
                               return False;
                            else
@@ -527,6 +545,39 @@ package body AdaSAT.DPLL is
          return True;
       end Backtrack;
 
+      --------------------
+      -- Setup_Backjump --
+      --------------------
+
+      procedure Setup_Backjump (Conflicting_Clause : Clause) is
+      begin
+         Learnt_Clause := Literal_Vectors.Empty_Vector;
+         Learnt_Clause.Reserve (Conflicting_Clause.all'Length);
+         Learnt_Mask := (others => False);
+
+         for Lit of Conflicting_Clause.all loop
+            if not Learnt_Mask (Lit) then
+               Learnt_Clause.Append (Lit);
+               Learnt_Mask (Lit) := True;
+            end if;
+         end loop;
+      end Setup_Backjump;
+
+      --------------------
+      -- Setup_Backjump --
+      --------------------
+
+      procedure Setup_Backjump (First_Lit, Second_Lit : Literal) is
+      begin
+         Learnt_Clause := Literal_Vectors.Empty_Vector;
+         Learnt_Mask := (others => False);
+
+         Learnt_Clause.Append (First_Lit);
+         Learnt_Clause.Append (Second_Lit);
+         Learnt_Mask (First_Lit) := True;
+         Learnt_Mask (Second_Lit) := True;
+      end Setup_Backjump;
+
       --------------
       -- Backjump --
       --------------
@@ -535,21 +586,10 @@ package body AdaSAT.DPLL is
          Found         : Natural := 0;
          Pivot         : Variable_Or_Null := 0;
          Pivot_Index   : Natural;
-         Learnt_Clause : Literal_Vectors.Vector;
-         Mask          : Literal_Mask (-M'Last .. +M'Last) :=
-            (others => False);
       begin
          if Decision_Level <= 0 then
             return False;
          end if;
-
-         Learnt_Clause.Reserve (Conflicting_Clause.all'Length);
-         for Lit of Conflicting_Clause.all loop
-            if not Mask (Lit) then
-               Learnt_Clause.Append (Lit);
-               Mask (Lit) := True;
-            end if;
-         end loop;
 
          --  We now want to build an asserting clause out of the conflicting
          --  clause. For that, we will replace each of its literal that was set
@@ -589,8 +629,7 @@ package body AdaSAT.DPLL is
 
             --  Update the learnt clause by resolving it with the antecendant
             --  of the pivot.
-            Resolve
-              (Learnt_Clause, Lit_Antecedants (Pivot), Mask, Pivot_Index);
+            Resolve (Lit_Antecedants (Pivot), Pivot_Index);
          end loop;
 
          --  Find the decision level to which we should backjump by taking
@@ -642,14 +681,9 @@ package body AdaSAT.DPLL is
       -- Resolve --
       -------------
 
-      procedure Resolve
-        (Left        : in out Literal_Vectors.Vector;
-         Right       : Clause;
-         Mask        : in out Literal_Mask;
-         Pivot_Index : Natural)
-      is
+      procedure Resolve (Right : Clause; Pivot_Index : Natural) is
       begin
-         Left.Swap_And_Remove (Pivot_Index);
+         Learnt_Clause.Swap_And_Remove (Pivot_Index);
 
          if Right (Right'First) = 0 then
             --  AMO constraint
@@ -658,18 +692,18 @@ package body AdaSAT.DPLL is
                .. Variable (Right (Right'Last))
             loop
                if M (Var) in True then
-                  if not Mask (-Var) then
-                     Mask (-Var) := True;
-                     Left.Append (-Var);
+                  if not Learnt_Mask (-Var) then
+                     Learnt_Mask (-Var) := True;
+                     Learnt_Clause.Append (-Var);
                   end if;
                   exit;
                end if;
             end loop;
          else
             for Lit of Right.all loop
-               if not Mask (Lit) then
-                  Mask (Lit) := True;
-                  Left.Append (Lit);
+               if not Learnt_Mask (Lit) then
+                  Learnt_Mask (Lit) := True;
+                  Learnt_Clause.Append (Lit);
                end if;
             end loop;
          end if;
