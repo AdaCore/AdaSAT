@@ -5,12 +5,12 @@ library project AdaSAT is
 
    type Library_Kind_Type is ("static", "relocatable", "static-pic");
    Library_Kind_Param : Library_Kind_Type := external
-     ("LIBRARY_TYPE", external ("LANGKIT_SUPPORT_LIBRARY_TYPE", "static"));
+     ("LIBRARY_TYPE", external ("ADASAT_LIBRARY_TYPE", "static"));
 
    for Source_Dirs use ("src");
    for Exec_Dir use "bin";
-   for Library_Dir use "lib/" & Build_Mode;
-   for Object_Dir use "obj/" & Build_Mode;
+   for Library_Dir use "lib/" & Library_Kind_Param & "/" & Build_Mode;
+   for Object_Dir use "obj/" & Library_Kind_Param & "/" & Build_Mode;
    for Library_Name use "adasat";
    for Library_Kind use Library_Kind_Param;
 
