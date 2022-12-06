@@ -29,7 +29,7 @@ library project AdaSAT is
 
          when "prod" =>
             for Default_Switches ("Ada") use
-               Common_Ada_Cargs & ("-g", "-Ofast", "-gnatp", "-gnatn2");
+               Common_Ada_Cargs & ("-g", "-Ofast", "-gnatp", "-gnatn2", "-flto");
       end case;
    end Compiler;
 end AdaSAT;
