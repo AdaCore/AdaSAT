@@ -62,10 +62,10 @@ package AdaSAT.Builders is
    procedure Add_At_Most_One
      (F        : in out Formula_Builder;
       From, To : Variable);
-   --  Add an at-most-one constraint between all variables for `From` to
-   --  `To` to the formula being built.
-   --  For example if `From = 1` and `To = 3`, this is equivalent to adding
-   --  the clauses `(¬1 | ¬2) & (¬1 | ¬3) & (¬2 | ¬3)` (represented using
+   --  Add an at-most-one constraint between all variables for ``From`` to
+   --  ``To`` to the formula being built.
+   --  For example if ``From = 1`` and ``To = 3``, this is equivalent to adding
+   --  the clauses ``(¬1 | ¬2) & (¬1 | ¬3) & (¬2 | ¬3)`` (represented using
    --  the naive, pairwise-encoding of at-most-one constraints), but in
    --  reality it generates an optimized representation of this clause which
    --  benefits from built-in support inside the DPLL solvers to allow for
@@ -82,7 +82,7 @@ package AdaSAT.Builders is
    --  builder.
 
    procedure Destroy (F : in out Formula_Builder);
-   --  Free the memory associatged to this builder. This will also free
+   --  Free the memory associated to this builder. This will also free
    --  all the clauses that it was managing.
 
    function Build (F : in out Formula_Builder) return Formula;

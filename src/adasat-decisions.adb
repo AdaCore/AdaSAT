@@ -15,8 +15,8 @@ package body AdaSAT.Decisions is
    begin
       for I in First_Unset .. M'Last loop
          if M (I) in Unset then
-            --  We can update First_Unset since we were exactly looking for the
-            --  first unset variable.
+            --  We can update ``First_Unset`` since we were exactly looking for
+            --  the first unset variable.
             First_Unset := I + 1;
             return I;
          end if;

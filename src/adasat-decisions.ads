@@ -4,7 +4,7 @@
 --
 
 --  This package defines some decision routines that can be used when
---  instantiating a DPLL solver. If none is provided, `First_Unassigned` will
+--  instantiating a DPLL solver. If none is provided, ``First_Unassigned`` will
 --  be used by default.
 --  A decision routine should return the unset variable that the DPLL solver
 --  should decide upon next. To make this choice, it is given the current
@@ -18,6 +18,6 @@
 package AdaSAT.Decisions is
    function First_Unassigned
      (M : Model; First_Unset : in out Variable) return Variable_Or_Null;
-   --  Return the first unassigned variable in the given model
-   --  Start looking after `First_Unset`.
+   --  Return the first unassigned variable in the given model. Start looking
+   --  after ``First_Unset``.
 end AdaSAT.Decisions;

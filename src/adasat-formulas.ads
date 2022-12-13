@@ -17,7 +17,7 @@ package AdaSAT.Formulas is
      (Clause, Clause_Array);
 
    subtype Formula is Clause_Vectors.Vector;
-   --  A CNF formula is a vector of clause.
+   --  A CNF formula is a vector of clauses.
    --  TODO: Ideally this type would be private and users should only create
    --  formulas using routines in the `AdaSAT.Builders` package, however I
    --  could not come up with a satisfying way to do this kind of encapsulation

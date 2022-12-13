@@ -9,6 +9,7 @@ with AdaSAT.Internals; use AdaSAT.Internals;
 package body AdaSAT.DPLL is
    type Decision_Array is array (Variable_Or_Null range <>) of Natural;
    type Antecedant_Array is array (Variable_Or_Null range <>) of Clause;
+
    type Literal_Mask is array (Literal range <>) of Boolean;
 
    type Watcher is record
@@ -184,7 +185,7 @@ package body AdaSAT.DPLL is
 
       To_Propagate : Literal_Vectors.Vector;
       --  The list of literals that need to be propagated during the next
-      --  call to Unit_Propagate.
+      --  call to ``Unit_Propagate``.
 
       Learnt_Clause : Literal_Vectors.Vector;
       --  The vector we use to generate the learnt clause during a backjump
@@ -201,9 +202,10 @@ package body AdaSAT.DPLL is
 
       function Check_Assign
         (Var : Variable; Value : Boolean; Antecedant : Clause) return Boolean;
-      --  Assigns a value to the given variable, updating the appropriate
-      --  data structures. Returns False if the variable already has a value
-      --  and it does not match to the given value. Otherwise returns True.
+      --  Assigns a value to the given variable, updating the appropriate data
+      --  structures. Returns ``False`` if the variable already has a value
+      --  and it does not match to the given value. Otherwise returns
+      --  ``True``.
 
       procedure Unassign (Var : Variable);
       --  Unassigns a variable, updating the appropriate data structures
@@ -260,7 +262,7 @@ package body AdaSAT.DPLL is
       --  Cleanup allocated resources and return the given boolean result
 
       function Reorder_Clause (C : Clause) return Natural;
-      --  Reorder the given clause to place apprioriate watched literals first
+      --  Reorder the given clause to place appropriate watched literals first
 
       ------------
       -- Assign --
@@ -415,8 +417,8 @@ package body AdaSAT.DPLL is
                   elsif W.Other /= 0 then
                      --  This is a binary clause, we know that W.Other is the
                      --  literal being propagated (therefore it is False), and
-                     --  `W.Blit` always holds the other literal. There we can
-                     --  determine what to do with a single lookup on `W.Blit`.
+                     --  ``W.Blit`` always holds the other literal. There we can
+                     --  determine what to do with a single lookup on ``W.Blit``.
                      pragma Assert (W.Other = Being_Propagated);
                      case Val (W.Blit) is
                         when True =>
@@ -627,7 +629,7 @@ package body AdaSAT.DPLL is
                exit;
             end if;
 
-            --  Update the learnt clause by resolving it with the antecendant
+            --  Update the learnt clause by resolving it with the antecedant
             --  of the pivot.
             Resolve (Lit_Antecedants (Pivot), Pivot_Index);
          end loop;
@@ -647,7 +649,7 @@ package body AdaSAT.DPLL is
                Lit_Decision_Level := Lit_Decisions (abs Learnt (I));
 
                if Lit_Decision_Level = Decision_Level then
-                  --  since we are building asserting clauses, only one literal
+                  --  Since we are building asserting clauses, only one literal
                   --  is at the current decision level. We put it in front of
                   --  the clause to set it up as a watched literal, so it will
                   --  become unset after the backtracking.
@@ -667,7 +669,7 @@ package body AdaSAT.DPLL is
             --  Add the learnt clause to the internal formula
             Append_Clause (F, Learnt);
 
-            --  since we are building asserting clauses, the `Asserting_Lit`
+            --  Since we are building asserting clauses, the `Asserting_Lit`
             --  extracted from the above loop will be the only literal which
             --  is unset, with all the others being False. Since this is now
             --  a unit clause, we can directly assign the literal so as to
@@ -752,7 +754,7 @@ package body AdaSAT.DPLL is
          end loop;
 
          if T = 0 then
-            --  We could not even find on non-False literal in the clause,
+            --  We could not even find one non-False literal in the clause,
             --  signal it by returning False
             return 0;
          end if;
@@ -807,7 +809,9 @@ package body AdaSAT.DPLL is
          begin
             if T.Check (Ctx, M, Explanation) then
                return Cleanup (True);
-            elsif Explanation.Length = 0 then
+            end if;
+
+            if Explanation.Length = 0 then
                return Cleanup (False);
             end if;
 
