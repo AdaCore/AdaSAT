@@ -16,19 +16,19 @@ simple interface consisting in a single `Check` function and context type:
 generic
    type User_Context;
    with function Check
-     (Ctx : in out User_Context;
-      M   : Model;
-      F   : in out Formula) return Boolean;
+     (Context     : in out User_Context;
+      Assignments : Model;
+      Explanation : in out Formula) return Boolean;
 package Theory is
 end Theory;
 ```
 The `Check` function is invoked whenever the solver needs the theory to
 validate a model that satisfies the SAT formula. In case the model does not
 satisfy the theory, the function must return a new formula which contradicts
-the model via the `F` out parameter. The provided contradiction is appended to
-the initial formula and the solver tries to find a new solution.
+the model via the `Explanation` out parameter. The provided contradiction is
+appended to the initial formula and the solver tries to find a new solution.
 
-*Note* that the context `Ctx` is propagated from the initial call to `Solve` to
+*Note* that `Context` is propagated from the initial call to `Solve` to
 each call to `Check` and its sole use is to simplify user-facing code, in
 particular to offer another way of accessing data required for solving the
 theory than having the `Check` subprogram be a nested subprogam of wherever

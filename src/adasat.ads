@@ -12,6 +12,16 @@ with Ada.Unchecked_Deallocation;
 
 package AdaSAT is
    type Variable is new Positive;
+   --  A boolean variable, which can appear positively or negatively in a
+   --  literal. For example, ``-2`` represents ``¬2``. From literals, we can
+   --  build clauses, and then formulas. Ultimately, the solver's job is to
+   --  assign the value ``True`` or ``False`` to each variable so that the
+   --  given formula is satisfied. The set of assignments is called a model.
+   --
+   --  Note that we represent variables as positive integers so that we can
+   --  directly use them as keys in arrays (for example in the ``Model`` type),
+   --  rather than, say strings (which would require replacing arrays by
+   --  hash maps) or records (which would require extra indirections).
 
    subtype Variable_Or_Null is Variable'Base range 0 .. Variable'Last;
 
@@ -26,7 +36,7 @@ package AdaSAT is
       with Inline;
    --  Create a literal with a negative polarity occurrence of a variable
 
-   function "abs" (L : Literal) return Variable
+   function Get_Var (L : Literal) return Variable
       with Inline;
    --  Get the variable that occurs in this literal
 
@@ -53,7 +63,17 @@ package AdaSAT is
 private
 
    type Literal is new Integer;
+   --  Packed representation of literals: instead of having a literal be a
+   --  record with a variable and a field that indicates whether it is a
+   --  positive or negative occurrence of it, we use the positive value to
+   --  represent a positive occurrence of a variable, and a negative value
+   --  for a negative occurrence.
+   --
+   --  Note that while both literals and variables are "just" integers, we
+   --  cannot mix them up in our code thanks to Ada's strong type system.
 
    procedure Free is new Ada.Unchecked_Deallocation
      (Literal_Array, Clause);
+   --  We declare this here to make it available to each child package
+   --  of AdaSAT.
 end AdaSAT;

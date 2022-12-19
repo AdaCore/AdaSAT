@@ -7,7 +7,41 @@ with AdaSAT.Formulas; use AdaSAT.Formulas;
 private with AdaSAT.Internals;
 
 --  This package provides some useful data types to build formulas ready to be
---  fed to the solver.
+--  fed to the solver. Example usage:
+--
+--  .. code:: ada
+--
+--     declare
+--        My_Clause : Clause_Builder;
+--        My_Formula : Formula_Builder;
+--     begin
+--        My_Clause.Add (+1);
+--        My_Clause.Add (-2);
+--        My_Clause.Add (+3);
+--        My_Formula.Add (My_Clause.Build);
+--        --  `My_Formula` now contains `(1 | ¬2 | 3)`
+--
+--        --  We can use My_Clause to build a second clause since its
+--        --  content was cleared when built and added to the formula builder.
+--        My_Clause.Add_Simplify (-1);
+--        My_Clause.Add_Simplify (-1);  --  No-op since `-1` is already there
+--        My_Clause.Add_Simplify (+2);
+--        My_Formula.Add (My_Clause.Build);
+--        --  `My_Formula` now contains `(1 | ¬2 | 3) & (¬1 | 2)`
+--
+--        My_Clause.Add (-1);
+--        My_Clause.Add (+2);
+--        My_Clause.Add (+3);
+--        My_Formula.Add_Simplify (My_Clause.Build);
+--        --  `My_Formula` still contains `(1 | ¬2 | 3) & (¬1 | 2)`, because
+--        --  the clause we want to add `(¬1 | 2 | 3)` is already implied by
+--        --  the clause `(¬1 | 2)`.
+--
+--        My_Formula.Add_At_Most_One (1, 3);
+--        --  `My_Formula` now additionally contains a canonical representation
+--        --  of `(¬1 | ¬2) & (¬1 | ¬3) & (¬2 | |3)`.
+--     end;
+--
 
 package AdaSAT.Builders is
    type Clause_Builder is tagged private;
@@ -64,12 +98,12 @@ package AdaSAT.Builders is
       From, To : Variable);
    --  Add an at-most-one constraint between all variables for ``From`` to
    --  ``To`` to the formula being built.
-   --  For example if ``From = 1`` and ``To = 3``, this is equivalent to adding
-   --  the clauses ``(¬1 | ¬2) & (¬1 | ¬3) & (¬2 | ¬3)`` (represented using
-   --  the naive, pairwise-encoding of at-most-one constraints), but in
-   --  reality it generates an optimized representation of this clause which
-   --  benefits from built-in support inside the DPLL solvers to allow for
-   --  efficient resolution.
+   --  For example if ``From = 1`` and ``To = 3``, this is equivalent to
+   --  adding the clauses ``(¬1 | ¬2) & (¬1 | ¬3) & (¬2 | ¬3)``
+   --  (represented using the naive, pairwise-encoding of at-most-one
+   --  constraints), but in reality it generates an optimized representation
+   --  of this clause which benefits from built-in support inside the DPLL
+   --  solvers to allow for efficient resolution.
 
    function Is_Feasible (F : Formula_Builder; L : Literal) return Boolean;
    --  Run a simple analysis to determine the value of the given literal.

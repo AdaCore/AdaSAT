@@ -17,7 +17,16 @@ package AdaSAT.Formulas is
      (Clause, Clause_Array);
 
    subtype Formula is Clause_Vectors.Vector;
-   --  A CNF formula is a vector of clauses.
+   --  A boolean formula in conjunctive normal form (CNF), represented by
+   --  a vector of clauses. This is the representation that the solver will
+   --  accept as input.
+   --
+   --  For example, the formula `(1 | ¬2) & (2 | 3)` is represented by the
+   --  vector `[(+1, -2), (2, 3)]`.
+   --
+   --  It is recommended to use the `AdaSAT.Builders` package to build
+   --  formulas.
+   --
    --  TODO: Ideally this type would be private and users should only create
    --  formulas using routines in the `AdaSAT.Builders` package, however I
    --  could not come up with a satisfying way to do this kind of encapsulation

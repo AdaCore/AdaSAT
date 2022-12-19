@@ -35,7 +35,7 @@ package body AdaSAT.Formulas is
       for Dis of F loop
          for L of Dis.all loop
             declare
-               Model_Value : constant Variable_Value := M (abs L);
+               Model_Value : constant Variable_Value := M (Get_Var (L));
                Required    : constant Variable_Value :=
                  (if L < 0 then False else True);
             begin

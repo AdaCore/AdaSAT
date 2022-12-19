@@ -8,7 +8,7 @@ with AdaSAT.Internals; use AdaSAT.Internals;
 
 package body AdaSAT.DPLL is
    type Decision_Array is array (Variable_Or_Null range <>) of Natural;
-   type Antecedant_Array is array (Variable_Or_Null range <>) of Clause;
+   type Antecedent_Array is array (Variable_Or_Null range <>) of Clause;
 
    type Literal_Mask is array (Literal range <>) of Boolean;
 
@@ -17,6 +17,26 @@ package body AdaSAT.DPLL is
       Other    : Literal;
       Literals : Clause;
    end record;
+   --  A wrapper around a clause, used as value type in an internal formula's
+   --  ``Occurs_List``. The ``Blit`` and ``Other`` literals serve different
+   --  purposes, depending on whether they have a non-0 value or not:
+   --  1. If both ``Blit`` and ``Other`` are non-0, this is a binary clause
+   --     (so, we have that ``Literals'Length = 2``), and these two literals
+   --     are the two literals of the underlying clause. This means that we
+   --     never need to dereference the clause when doing unit propagation on
+   --     binary clauses.
+   --
+   --  2. If both ``Blit`` and ``Other`` are 0, this is an "At-Most-One"
+   --     constraint. In that case, the second and third literals of the
+   --     underlying clause give the range of the constraint.
+   --
+   --  3. If ``Blit`` is non-0 but ``Other`` is 0, this is a "normal" clause,
+   --     i.e. neither a binary clause nor an AMO clause. In that case,
+   --     ``Blit`` is used as a blocking literal. A blocking literal is an
+   --     arbitrary literal extracted from the underlying clause which
+   --     we use to skip unit propagation of a clause early - before we need
+   --     to deference the actual clause - in case it evaluates to True.
+   --     See ``Unit_Propagate`` for more information.
 
    type Watcher_Array is array (Positive range <>) of Watcher;
 
@@ -58,7 +78,7 @@ package body AdaSAT.DPLL is
 
    function Solve_Internal
      (F        : in out Internal_Formula;
-      Ctx      : in out T.User_Context;
+      Ctx      : in out User_Theory.User_Context;
       M        : in out Model;
       Min_Vars : Variable_Or_Null) return Boolean;
    --  Solve the given formula with the given partial model.
@@ -91,10 +111,24 @@ package body AdaSAT.DPLL is
       K : constant Natural := C'First;
    begin
       if C (K) = 0 then
-         --  This is a special AMO constraint
+         --  This is a special "At-Most-One" constraint: the two following
+         --  literals give the range. For example if the clause is
+         --  ``(0, 2, 4)``, the ``0`` indicates that this is an AMO constraint,
+         --  while ``2`` and ``4`` indicate that variables from 2 to 4 are part
+         --  of the constraint. That is, 0 or 1 of these 3 variables can be
+         --  True at the same time.
+         --  This is equivalent to adding clauses ``(¬2 | ¬3)``,
+         --  ``(¬2 | ¬4)`` and ``(¬3 | ¬4)`` but uses a single clause
+         --  instead of O(n²) where n represents the number of variables in
+         --  the constraint.
          declare
             W : constant Watcher := (0, 0, C);
          begin
+            --  Since all variables in the range are impacted by this
+            --  constraint, we need to place a watch on each of them.
+            --  We still don't want to materialize the n² clauses, so we
+            --  will need special handling of AMO constraint in
+            --  ``Unit_Propagate`` as well.
             for Lit in C (K + 1) .. C (C'Last) loop
                F.Occurs_List (-Lit).Append (W);
             end loop;
@@ -158,30 +192,30 @@ package body AdaSAT.DPLL is
 
    function Solve_Internal
      (F        : in out Internal_Formula;
-      Ctx      : in out T.User_Context;
+      Ctx      : in out User_Theory.User_Context;
       M        : in out Model;
       Min_Vars : Variable_Or_Null) return Boolean
    is
-      Unassigned_Left    : Natural := Unassigned_Count (M);
+      Unassigned_Left : Natural := Unassigned_Count (M);
       --  Track the number of variables that are not yet set
 
-      First_Unset        : Variable := M'First;
+      First_Unset : Variable := M'First;
       --  Track the closest variable which can be decided next
 
-      Decision_Level     : Natural := 0;
+      Decision_Level : Natural := 0;
       --  The current decision level
 
-      Lit_Decisions      : Decision_Array :=
+      Lit_Decisions : Decision_Array :=
         (1 .. Variable_Or_Null (Unassigned_Left) => 0);
       --  Maps each variable to the decision level in which a value was
       --  set for it.
 
-      Lit_Antecedants    : Antecedant_Array :=
+      Lit_Antecedents : Antecedent_Array :=
         (1 .. Variable_Or_Null (Unassigned_Left) => null);
-      --  Maps each variable to its antecedant clause: if the variable was
+      --  Maps each variable to its antecedent clause: if the variable was
       --  assigned a value through unit propagation, this is the clause that
       --  was unit. If the variable was assigned a value through a decision,
-      --  its antecedant is null.
+      --  its antecedent is null.
 
       To_Propagate : Literal_Vectors.Vector;
       --  The list of literals that need to be propagated during the next
@@ -195,13 +229,13 @@ package body AdaSAT.DPLL is
       --  already present (or were present at some point) in the learnt clause.
 
       procedure Assign
-        (Var : Variable; Value : Boolean; Antecedant : Clause);
+        (Var : Variable; Value : Boolean; Antecedent : Clause);
       --  Assigns a value to the given variable, updating the appropriate
       --  data structures. It is assumed that the variable does not yet
       --  have a value.
 
       function Check_Assign
-        (Var : Variable; Value : Boolean; Antecedant : Clause) return Boolean;
+        (Var : Variable; Value : Boolean; Antecedent : Clause) return Boolean;
       --  Assigns a value to the given variable, updating the appropriate data
       --  structures. Returns ``False`` if the variable already has a value
       --  and it does not match to the given value. Otherwise returns
@@ -226,7 +260,8 @@ package body AdaSAT.DPLL is
       --  Return evaluation of the given literal
 
       function Unit_Propagate return Boolean;
-      --  Implements the BCP routine.
+      --  Implements the boolean constraint propagation routine. This is the
+      --  most crucial part of the solver, where most of the time is spent.
 
       function Backtrack return Boolean with Unreferenced;
       --  Implements chronological backtracking. This is not used ATM but
@@ -262,20 +297,22 @@ package body AdaSAT.DPLL is
       --  Cleanup allocated resources and return the given boolean result
 
       function Reorder_Clause (C : Clause) return Natural;
-      --  Reorder the given clause to place appropriate watched literals first
+      --  Reorder the given clause to place appropriate watched literals first.
+      --  Return the number of non-False literals that we were able to watch,
+      --  So either 0, 1 or 2.
 
       ------------
       -- Assign --
       ------------
 
       procedure Assign
-        (Var : Variable; Value : Boolean; Antecedant : Clause)
+        (Var : Variable; Value : Boolean; Antecedent : Clause)
       is
       begin
-         pragma Assert (M (Var) in Unset);
+         pragma Assert (M (Var) = Unset);
          M (Var) := (if Value then True else False);
          Lit_Decisions (Var) := Decision_Level;
-         Lit_Antecedants (Var) := Antecedant;
+         Lit_Antecedents (Var) := Antecedent;
          Unassigned_Left := Unassigned_Left - 1;
          Add_To_Propagate ((if Value then -Var else +Var));
       end Assign;
@@ -285,13 +322,13 @@ package body AdaSAT.DPLL is
       ------------------
 
       function Check_Assign
-        (Var : Variable; Value : Boolean; Antecedant : Clause) return Boolean
+        (Var : Variable; Value : Boolean; Antecedent : Clause) return Boolean
       is
          Expected : constant Variable_Value := (if Value then True else False);
          Actual   : constant Variable_Value := M (Var);
       begin
-         if Actual in Unset then
-            Assign (Var, Value, Antecedant);
+         if Actual = Unset then
+            Assign (Var, Value, Antecedent);
             return Unit_Propagate;
          else
             return Actual = Expected;
@@ -333,7 +370,7 @@ package body AdaSAT.DPLL is
 
       procedure Add_To_Propagate (L : Literal) is
       begin
-         pragma Assert (Val (L) in False);
+         pragma Assert (Val (L) = False);
          To_Propagate.Append (L);
       end Add_To_Propagate;
 
@@ -351,11 +388,12 @@ package body AdaSAT.DPLL is
       ---------
 
       function Val (X : Literal) return Variable_Value is
+         Var : constant Variable := Get_Var (X);
       begin
          if X > 0 then
-            return M (abs X);
+            return M (Var);
          else
-            return (case M (abs X) is
+            return (case M (Var) is
                when True => False,
                when False => True,
                when Unset => Unset);
@@ -381,7 +419,8 @@ package body AdaSAT.DPLL is
 
             while J <= Watch_Count loop
                declare
-                  W : constant access Watcher := Watchers.Get_Access (J);
+                  W : constant Watcher_Vectors.Element_Access :=
+                     Watchers.Get_Access (J);
 
                   Is_Sat      : Boolean;
                   Lits        : Clause;
@@ -391,18 +430,21 @@ package body AdaSAT.DPLL is
                      --  This is an AMO constraint. We know that the variable
                      --  being propagated was set to True, so we must assign
                      --  all the other variables to False.
-                     pragma Assert (M (abs Being_Propagated) in True);
+                     pragma Assert (M (Get_Var (Being_Propagated)) = True);
                      Lits := W.Literals;
                      declare
-                        From : constant Variable := abs Lits (Lits'First + 1);
-                        To   : constant Variable := abs Lits (Lits'Last);
+                        From : constant Variable :=
+                           Get_Var (Lits (Lits'First + 1));
+
+                        To   : constant Variable :=
+                           Get_Var (Lits (Lits'Last));
                      begin
                         for Var in From .. To loop
                            case M (Var) is
                               when True =>
                                  --  If another variable is already true, we
                                  --  have a conflict.
-                                 if Var /= abs Being_Propagated then
+                                 if Var /= Get_Var (Being_Propagated) then
                                     Setup_Backjump (-Var, Being_Propagated);
                                     Clear_Propagation;
                                     return False;
@@ -417,8 +459,9 @@ package body AdaSAT.DPLL is
                   elsif W.Other /= 0 then
                      --  This is a binary clause, we know that W.Other is the
                      --  literal being propagated (therefore it is False), and
-                     --  ``W.Blit`` always holds the other literal. There we can
-                     --  determine what to do with a single lookup on ``W.Blit``.
+                     --  ``W.Blit`` always holds the other literal. There we
+                     --  can determine what to do with a single lookup on
+                     --  ``W.Blit``.
                      pragma Assert (W.Other = Being_Propagated);
                      case Val (W.Blit) is
                         when True =>
@@ -431,9 +474,13 @@ package body AdaSAT.DPLL is
                            return False;
                         when Unset =>
                            --  Clause is unit
-                           Assign (abs W.Blit, W.Blit > 0, W.Literals);
+                           Assign (Get_Var (W.Blit), W.Blit > 0, W.Literals);
                      end case;
-                  elsif Val (W.Blit) not in True then
+                  elsif Val (W.Blit) /= True then
+                     --  This is a "normal" clause and the blocking literal did
+                     --  not allow us to skip it. So we now have no choice
+                     --  but to dereference ``W.Literals`` now and inspect each
+                     --  one of its literals.
                      pragma Assert (W.Blit /= Being_Propagated);
 
                      Lits := W.Literals;
@@ -454,7 +501,7 @@ package body AdaSAT.DPLL is
 
                      --  and let's check what's inside
                      if Other_Lit /= W.Blit and then
-                        Val (Other_Lit) in True
+                        Val (Other_Lit) = True
                      then
                         --  The other watched literal is true meaning the
                         --  clause is satisfied, simply update the watcher's
@@ -470,7 +517,7 @@ package body AdaSAT.DPLL is
                         --  Note that at this stage, we still don't know if the
                         --  other watched literal is False or Unset.
                         for K in Lits'First + 2 .. Lits'Last loop
-                           if Val (Lits (K)) not in False then
+                           if Val (Lits (K)) /= False then
                               --  Found a non-false literal! swap its place
                               --  inside the clause to consider it as the other
                               --  watched literal.
@@ -502,12 +549,13 @@ package body AdaSAT.DPLL is
                            --  can finally check the value of the other watched
                            --  literal to determine if we have a unit clause or
                            --  a conflict.
-                           if Val (Other_Lit) in False then
+                           if Val (Other_Lit) = False then
                               Setup_Backjump (Lits);
                               Clear_Propagation;
                               return False;
                            else
-                              Assign (abs Other_Lit, Other_Lit > 0, Lits);
+                              Assign
+                                (Get_Var (Other_Lit), Other_Lit > 0, Lits);
                            end if;
                         end if;
                      end if;
@@ -542,7 +590,7 @@ package body AdaSAT.DPLL is
                Unassign (Index);
             end if;
          end loop;
-         Assign (First, Value in False, null);
+         Assign (First, Value = False, null);
          First_Unset := First + 1;
          return True;
       end Backtrack;
@@ -595,7 +643,7 @@ package body AdaSAT.DPLL is
 
          --  We now want to build an asserting clause out of the conflicting
          --  clause. For that, we will replace each of its literal that was set
-         --  at the current decision level with their antecedant clause by
+         --  at the current decision level with their antecedent clause by
          --  applying the resolution rule, until there is only one literal left
          --  at the current decision level. That way, we know that this literal
          --  will be the only one unset after backtracking, and therefore our
@@ -610,13 +658,14 @@ package body AdaSAT.DPLL is
             --  levels.
             for Lit_Index in 1 .. Learnt_Clause.Length loop
                declare
-                  Var : constant Variable := abs Learnt_Clause.Get (Lit_Index);
+                  Var : constant Variable :=
+                     Get_Var (Learnt_Clause.Get (Lit_Index));
                begin
                   if Lit_Decisions (Var) = Decision_Level then
                      Found := Found + 1;
                      --  TODO: exit if Found > 1?
                      if Pivot = 0 and then
-                        Lit_Antecedants (Var) /= null
+                        Lit_Antecedents (Var) /= null
                      then
                         Pivot       := Var;
                         Pivot_Index := Lit_Index;
@@ -625,13 +674,17 @@ package body AdaSAT.DPLL is
                end;
             end loop;
 
+            --  Either we found a single literal set at the current decision,
+            --  in which case we have our asserting clause and we can exit,
+            --  or we found several of them, in which case we will try to
+            --  remove one (the pivot) by replacing it with its antecedents.
             if Found = 1 then
                exit;
             end if;
 
-            --  Update the learnt clause by resolving it with the antecedant
+            --  Update the learnt clause by resolving it with the antecedent
             --  of the pivot.
-            Resolve (Lit_Antecedants (Pivot), Pivot_Index);
+            Resolve (Lit_Antecedents (Pivot), Pivot_Index);
          end loop;
 
          --  Find the decision level to which we should backjump by taking
@@ -646,7 +699,7 @@ package body AdaSAT.DPLL is
                Get_Literal_Vector_Array (Learnt_Clause);
          begin
             for I in Learnt'Range loop
-               Lit_Decision_Level := Lit_Decisions (abs Learnt (I));
+               Lit_Decision_Level := Lit_Decisions (Get_Var (Learnt (I)));
 
                if Lit_Decision_Level = Decision_Level then
                   --  Since we are building asserting clauses, only one literal
@@ -674,7 +727,7 @@ package body AdaSAT.DPLL is
             --  is unset, with all the others being False. Since this is now
             --  a unit clause, we can directly assign the literal so as to
             --  satisfy the clause.
-            Assign (abs Asserting_Lit, Asserting_Lit > 0, Learnt);
+            Assign (Get_Var (Asserting_Lit), Asserting_Lit > 0, Learnt);
             return True;
          end;
       end Backjump;
@@ -693,7 +746,7 @@ package body AdaSAT.DPLL is
                Variable (Right (Right'First + 1))
                .. Variable (Right (Right'Last))
             loop
-               if M (Var) in True then
+               if M (Var) = True then
                   if not Learnt_Mask (-Var) then
                      Learnt_Mask (-Var) := True;
                      Learnt_Clause.Append (-Var);
@@ -743,7 +796,7 @@ package body AdaSAT.DPLL is
       begin
          --  Find first literal to watch
          while I <= C'Last loop
-            if Val (C (I)) not in False then
+            if Val (C (I)) /= False then
                T := C (I);
                C (I) := C (C'First);
                C (C'First) := T;
@@ -754,14 +807,14 @@ package body AdaSAT.DPLL is
          end loop;
 
          if T = 0 then
-            --  We could not even find one non-False literal in the clause,
-            --  signal it by returning False
+            --  We could not even find one non-False literal in the clause, the
+            --  clause is trivially False.
             return 0;
          end if;
 
          --  Find second literal to watch
          while I <= C'Last loop
-            if Val (C (I)) not in False then
+            if Val (C (I)) /= False then
                T := C (I);
                C (I) := C (C'First + 1);
                C (C'First + 1) := T;
@@ -770,6 +823,9 @@ package body AdaSAT.DPLL is
             I := I + 1;
          end loop;
 
+         --  We could only find one non-False literal, the clause is either
+         --  satisfied or unit, depending on whether that literal is True or
+         --  Unset, respectively.
          return 1;
       end Reorder_Clause;
 
@@ -779,7 +835,7 @@ package body AdaSAT.DPLL is
       for C of F.Clauses loop
          --  Check that it has not already been set by a duplicate clause
          if C'Length = 1 and then
-            not Check_Assign (abs C (C'First), C (C'First) > 0, C)
+            not Check_Assign (Get_Var (C (C'First)), C (C'First) > 0, C)
          then
             return Cleanup (False);
          end if;
@@ -807,7 +863,7 @@ package body AdaSAT.DPLL is
          declare
             Explanation : Formula;
          begin
-            if T.Check (Ctx, M, Explanation) then
+            if User_Theory.Check (Ctx, M, Explanation) then
                return Cleanup (True);
             end if;
 
@@ -828,7 +884,8 @@ package body AdaSAT.DPLL is
                      Explanation.Destroy;
                      return Cleanup (False);
                   elsif Non_False = 1 then
-                     if not Check_Assign (abs C (C'First), C (C'First) > 0, C)
+                     if not Check_Assign
+                       (Get_Var (C (C'First)), C (C'First) > 0, C)
                      then
                         Explanation.Destroy;
                         return Cleanup (False);
@@ -853,7 +910,7 @@ package body AdaSAT.DPLL is
 
    function Solve
      (F        : Formula;
-      Ctx      : in out T.User_Context;
+      Ctx      : in out User_Theory.User_Context;
       M        : in out Model;
       Min_Vars : Variable_Or_Null := 0) return Boolean
    is

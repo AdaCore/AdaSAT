@@ -24,11 +24,10 @@ package body AdaSAT is
    -- "abs" --
    -----------
 
-   function "abs" (L : Literal) return Variable is
-      pragma Suppress (Range_Check);
+   function Get_Var (L : Literal) return Variable is
    begin
       return Variable (Literal'(abs L));
-   end "abs";
+   end Get_Var;
 
    -----------
    -- Image --

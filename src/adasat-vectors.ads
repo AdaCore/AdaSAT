@@ -12,6 +12,8 @@ with System;
 --  be able to extract the underlying array (see function `Internal_Array`),
 --  which required changes in the allocation and deallocation routines to
 --  account for the potential array bounds we may need to insert.
+--
+--  TODO: Put this implementation in a separate library? (GNATCOLL?)
 
 generic
    type Element_Type is private;
