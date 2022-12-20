@@ -9,7 +9,7 @@ ALL_LIBRARY_TYPES = static static-pic relocatable
 .PHONY: lib
 lib:
 	gprbuild -k -P adasat.gpr -p -j$(PROCESSORS) \
-		--relocate-build-tree=$(BUILD_DIR) \
+		--relocate-build-tree="$(BUILD_DIR)" \
 		-XLIBRARY_TYPE=$(LIBRARY_TYPE) \
 		-XBUILD_MODE=$(BUILD_MODE)
 
@@ -17,7 +17,7 @@ lib:
 all-libs:
 	for kind in $(ALL_LIBRARY_TYPES) ; do \
 		gprbuild -k -P adasat.gpr -p -j$(PROCESSORS) \
-			--relocate-build-tree=$(BUILD_DIR) \
+			--relocate-build-tree="$(BUILD_DIR)" \
 			-XLIBRARY_TYPE=$$kind \
 			-XBUILD_MODE=$(BUILD_MODE) ; \
 	done
@@ -28,7 +28,7 @@ install:
 		gprinstall -P adasat.gpr -p -f \
 			-XLIBRARY_TYPE=$$kind \
 			-XBUILD_MODE=$(BUILD_MODE) \
-			--relocate-build-tree=$(BUILD_DIR) \
+			--relocate-build-tree="$(BUILD_DIR)" \
 			--prefix="$(INSTALL_DIR)" \
 			--build-name=$$kind \
 			--build-var=LIBRARY_TYPE ; \
@@ -37,7 +37,7 @@ install:
 .PHONY: test
 clean:
 	gprclean -P adasat.gpr \
-		--relocate-build-tree=$(BUILD_DIR) \
+		--relocate-build-tree="$(BUILD_DIR)" \
 		-XLIBRARY_TYPE=$(LIBRARY_TYPE) \
 		-XBUILD_MODE=$(BUILD_MODE)
 
