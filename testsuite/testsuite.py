@@ -6,6 +6,18 @@ from e3.testsuite import Testsuite
 from e3.testsuite.driver.diff import DiffTestDriver
 
 
+def valgrind_wrap(driver, argv):
+    """
+    When running the testsuite in valgrind mode, wrap the given command line
+    arguments so that the program is run under Valgrind. Return them unchanged
+    otherwise.
+    """
+    result = list(argv)
+    if driver.env.options.valgrind:
+        result = ["valgrind", "-q", "--leak-check=full"] + result
+    return result
+
+
 class CompileAndRunDriver(DiffTestDriver):
     """Driver"""
     def run(self):
@@ -23,7 +35,7 @@ class CompileAndRunDriver(DiffTestDriver):
             if exec_args:
                 self.output += "[" + " ".join(exec_args) + "]\n"
             run_command = ["./" + executable] + exec_args
-            self.shell(run_command, analyze_output=True)
+            self.shell(valgrind_wrap(self, run_command), analyze_output=True)
 
 
 class AdaSATTestsuite(Testsuite):
@@ -35,6 +47,10 @@ class AdaSATTestsuite(Testsuite):
         parser.add_argument(
             "--rewrite", action="store_true",
             help="Rewrite test baselines according to current outputs"
+        )
+        parser.add_argument(
+            "--valgrind", action="store_true",
+            help="Run tests within Valgrind to check memory issues."
         )
 
     def set_up(self):
