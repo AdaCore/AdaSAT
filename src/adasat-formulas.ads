@@ -41,4 +41,7 @@ package AdaSAT.Formulas is
    function Satisfies (F : Formula; M : Model) return SAT_Result;
    --  Given a formula and a model, evaluates whether the model
    --  satisfies the formula or not.
+
+   procedure Free_All (F : in out Formula);
+   --  Free all the clauses inside this formula and destroy the vector itself
 end AdaSAT.Formulas;

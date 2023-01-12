@@ -59,4 +59,18 @@ package body AdaSAT.Formulas is
       end loop;
       return SAT;
    end Satisfies;
+
+   --------------
+   -- Free_All --
+   --------------
+
+   procedure Free_All (F : in out Formula) is
+      Mutable_C : Clause;
+   begin
+      for C of F loop
+         Mutable_C := C;
+         Free (Mutable_C);
+      end loop;
+      F.Destroy;
+   end Free_All;
 end AdaSAT.Formulas;

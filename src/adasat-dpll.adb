@@ -89,13 +89,8 @@ package body AdaSAT.DPLL is
    -------------
 
    procedure Destroy (F : in out Internal_Formula) is
-      Mutable_C : Clause;
    begin
-      for C of F.Clauses loop
-         Mutable_C := C;
-         Free (Mutable_C);
-      end loop;
-      F.Clauses.Destroy;
+      Free_All (F.Clauses);
       for V of F.Occurs_List loop
          V.Destroy;
       end loop;
@@ -881,13 +876,13 @@ package body AdaSAT.DPLL is
                   Non_False : constant Natural := Reorder_Clause (C);
                begin
                   if Non_False = 0 then
-                     Explanation.Destroy;
+                     Free_All (Explanation);
                      return Cleanup (False);
                   elsif Non_False = 1 then
                      if not Check_Assign
                        (Get_Var (C (C'First)), C (C'First) > 0, C)
                      then
-                        Explanation.Destroy;
+                        Free_All (Explanation);
                         return Cleanup (False);
                      end if;
                   end if;

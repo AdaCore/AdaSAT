@@ -162,13 +162,8 @@ package body AdaSAT.Builders is
    -------------
 
    procedure Destroy (F : in out Formula_Builder) is
-      D : Clause;
    begin
-      for C of F.V loop
-         D := C;
-         Free (D);
-      end loop;
-      F.V.Destroy;
+      Free_All (F.V);
    end Destroy;
 
    -----------
