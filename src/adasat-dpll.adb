@@ -858,9 +858,20 @@ package body AdaSAT.DPLL is
          declare
             Explanation : Formula;
          begin
-            if User_Theory.Check (Ctx, M, Explanation) then
-               return Cleanup (True);
-            end if;
+            declare
+               Dummy : Boolean;
+            begin
+               if User_Theory.Check (Ctx, M, Explanation) then
+                  return Cleanup (True);
+               end if;
+            exception
+               when others =>
+                  --  Make sure we clean up everything in case there was an
+                  --  exception during theory checking before propagating.
+                  Free_All (Explanation);
+                  Dummy := Cleanup (False);
+                  raise;
+            end;
 
             if Explanation.Length = 0 then
                return Cleanup (False);
