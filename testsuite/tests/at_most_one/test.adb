@@ -6,7 +6,7 @@ with AdaSAT.Helpers;
 
 --  Test the built-in handling of At-Most-One constraints
 
-procedure At_Most_One is
+procedure Test is
    use AdaSAT;
    use AdaSAT.Builders;
    use AdaSAT.Formulas;
@@ -55,4 +55,4 @@ begin
    B_4.Add (new Literal_Array'(1 => -4));
    B_4.Add (new Literal_Array'(1 => -5));
    Solve (B_4, "B_4");
-end At_Most_One;
+end Test;

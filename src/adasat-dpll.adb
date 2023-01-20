@@ -633,6 +633,7 @@ package body AdaSAT.DPLL is
          Pivot_Index   : Natural;
       begin
          if Decision_Level <= 0 then
+            Learnt_Clause.Destroy;
             return False;
          end if;
 

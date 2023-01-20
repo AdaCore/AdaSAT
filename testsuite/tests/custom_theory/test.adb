@@ -9,7 +9,7 @@ with AdaSAT.Theory;
 --  The theory below doesn't do anything smart and its only purpose is to check
 --  that everything works as expected.
 
-procedure Custom_Theory is
+procedure Test is
    use AdaSAT;
    use AdaSAT.Formulas;
 
@@ -80,4 +80,4 @@ begin
       Put_Line ("Found" & Ctx.Solved'Image & " solutions.");
    end if;
    New_Line;
-end Custom_Theory;
+end Test;

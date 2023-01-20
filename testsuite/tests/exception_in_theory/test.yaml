@@ -1,2 +1,2 @@
 project_file: prj.gpr
-executable: exception_in_theory
+executable: test

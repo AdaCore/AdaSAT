@@ -9,7 +9,7 @@ with AdaSAT.Theory;
 --  propagated back to the user. It is also here to make sure that memory is
 --  properly freed along the way.
 
-procedure Exception_In_Theory is
+procedure Test is
    use AdaSAT;
    use AdaSAT.Formulas;
 
@@ -53,4 +53,4 @@ begin
 exception
    when others =>
       Put_Line ("An exception occurred while solving!");
-end Exception_In_Theory;
+end Test;

@@ -1,2 +1,2 @@
 project_file: prj.gpr
-executable: custom_theory
+executable: test

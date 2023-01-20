@@ -1,5 +1,5 @@
 with "adasat";
 
 project Prj is
-   for Main use ("custom_theory.adb");
+   for Main use ("test.adb");
 end Prj;
