@@ -679,12 +679,19 @@ package body AdaSAT.DPLL is
                begin
                   if Lit_Decisions (Var) = Decision_Level then
                      Found := Found + 1;
-                     --  TODO: exit if Found > 1?
-                     if Pivot = 0 and then
-                        Lit_Antecedents (Var) /= null
-                     then
-                        Pivot       := Var;
-                        Pivot_Index := Lit_Index;
+                     if Pivot = 0 then
+                        if Lit_Antecedents (Var) /= null then
+                           Pivot       := Var;
+                           Pivot_Index := Lit_Index;
+                        end if;
+                     elsif Found > 1 then
+                        --  We know there are at least two pivots and we
+                        --  already selected one (since ``Pivot /= 0``), so we
+                        --  can exit early from this internal loop to save some
+                        --  cycles. This is OK because we don't need to know
+                        --  how many potential pivots there were, only that
+                        --  there were more than one.
+                        exit;
                      end if;
                   end if;
                end;
