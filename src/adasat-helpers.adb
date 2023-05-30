@@ -1,3 +1,9 @@
+--
+--  Copyright (C) 2019-2023, AdaCore
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
+
 with AdaSAT.Theory;
 with AdaSAT.DPLL;
 
