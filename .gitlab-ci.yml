@@ -20,9 +20,23 @@ workflow:
 
 
 stages:
-  - single
+  - issue
+  - cb
+
+
+issue_check:
+  services:
+     - image:e3
+  stage: issue
+  interruptible: true  # Cancel job if the branch is pushed
+  variables: # do not checkout the git repository, not needed
+    GIT_STRATEGY: none
+  rules: # Launch only on merge requests
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  script:
+    - unset GITLAB_TOKEN; require_issue
 
 
 continuous_builder:
   extends: .cb
-  stage: single
+  stage: cb
