@@ -1,0 +1,5 @@
+with "adasat";
+
+project Prj is
+   for Main use ("test.adb");
+end Prj;
