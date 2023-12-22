@@ -4,8 +4,6 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
-with Ada.Unchecked_Deallocation;
-
 --  The root package of the AdaSAT library. Defines the base data structures
 --  that are used everywhere else.
 --  You should instantiate the `AdaSAT.DPLL` package with your own theory or
@@ -61,6 +59,9 @@ package AdaSAT is
    function Image (M : Model) return String;
    --  Returns a string representation of the model
 
+   procedure Free (C : in out Clause);
+   --  Free memory allocated for the given clause
+
 private
 
    type Literal is new Integer;
@@ -72,9 +73,4 @@ private
    --
    --  Note that while both literals and variables are "just" integers, we
    --  cannot mix them up in our code thanks to Ada's strong type system.
-
-   procedure Free is new Ada.Unchecked_Deallocation
-     (Literal_Array, Clause);
-   --  We declare this here to make it available to each child package
-   --  of AdaSAT.
 end AdaSAT;
