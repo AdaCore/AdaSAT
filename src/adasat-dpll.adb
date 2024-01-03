@@ -4,6 +4,8 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
+with Ada.Unchecked_Deallocation;
+
 with AdaSAT.Vectors;
 with AdaSAT.Internals; use AdaSAT.Internals;
 

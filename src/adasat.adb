@@ -5,8 +5,13 @@
 --
 
 with Ada.Strings.Unbounded;
+with Ada.Unchecked_Deallocation;
 
 package body AdaSAT is
+
+   procedure Free_Clause is new Ada.Unchecked_Deallocation
+     (Literal_Array, Clause);
+
    ---------
    -- "+" --
    ---------
@@ -80,4 +85,13 @@ package body AdaSAT is
       end loop;
       return To_String (Res);
    end Image;
+
+   ----------
+   -- Free --
+   ----------
+
+   procedure Free (C : in out Clause) is
+   begin
+      Free_Clause (C);
+   end Free;
 end AdaSAT;
