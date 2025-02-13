@@ -31,7 +31,7 @@ install:
 			--relocate-build-tree="$(BUILD_DIR)" \
 			--prefix="$(INSTALL_DIR)" \
 			--build-name=$$kind \
-			--build-var=LIBRARY_TYPE ; \
+			--build-var=$(LIBRARY_TYPE) ; \
 	done
 
 .PHONY: test
